@@ -62,7 +62,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/EasyVideoEditor.git
+git clone https://github.com/famfamfam/EasyVideoEditor.git
 cd EasyVideoEditor
 
 # Install dependencies
