@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary SEO fallback (RU default, overridden by react-helmet-async at runtime) -->
+    <title>Бесплатный онлайн видео редактор — обрезка, склейка, эффекты без регистрации</title>
+    <meta name="description" content="Бесплатный онлайн видео редактор в браузере. Обрезка, склейка, переходы, эффекты — без регистрации, без водяных знаков. Работает офлайн." />
+    <meta name="keywords" content="бесплатный видео редактор, онлайн видео редактор, обрезать видео онлайн, склеить видео, видео редактор без регистрации, видеоредактор бесплатно, free video editor, online video editor, trim video online, merge video online, video editor no watermark" />
+
+    <!-- hreflang (static fallback) -->
+    <link rel="alternate" hreflang="ru" href="https://videoeditor.6io.io/" />
+    <link rel="alternate" hreflang="en" href="https://videoeditor.6io.io/" />
+    <link rel="alternate" hreflang="x-default" href="https://videoeditor.6io.io/" />
+
+    <!-- Canonical (static fallback) -->
+    <link rel="canonical" href="https://videoeditor.6io.io/" />
+
+    <!-- Open Graph (static fallback) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Бесплатный онлайн видео редактор — без регистрации и водяных знаков" />
+    <meta property="og:description" content="Простой и мощный видео редактор прямо в браузере. Обрезка, склейка, переходы, регулировка скорости и громкости. Полностью бесплатно." />
+    <meta property="og:image" content="https://videoeditor.6io.io/og-image.png" />
+    <meta property="og:url" content="https://videoeditor.6io.io/" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:site_name" content="6io.io" />
+
+    <!-- Twitter Card (static fallback) -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Бесплатный онлайн видео редактор" />
+    <meta name="twitter:description" content="Обрезайте, склеивайте видео, добавляйте переходы — бесплатно, без регистрации, прямо в браузере." />
+    <meta name="twitter:image" content="https://videoeditor.6io.io/og-image.png" />
+
+    <!-- Structured Data: WebApplication (bilingual) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Free Online Video Editor / Бесплатный онлайн видео редактор",
+      "description": "Free browser-based video editor. Trim, merge, add transitions and effects — no install, no registration, no watermarks. Бесплатный видеоредактор в браузере. Обрезка, склейка, переходы и эффекты.",
+      "url": "https://videoeditor.6io.io/",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript, WebAssembly",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "6io.io — AI Video & Image Generation",
+        "url": "https://6io.io"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Trim video / Обрезка видео",
+        "Merge multiple clips / Склейка видео",
+        "Smooth transitions between clips / Плавные переходы",
+        "Playback speed adjustment / Регулировка скорости",
+        "Volume control / Регулировка громкости",
+        "Frame capture / Извлечение кадров",
+        "Export to MP4 / Экспорт в MP4",
+        "Works offline / Работа без интернета",
+        "No watermarks / Без водяных знаков"
+      ],
+      "inLanguage": ["ru", "en"]
+    }
+    </script>
+
+    <!-- Structured Data: FAQPage (bilingual) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is it really free? / Это действительно бесплатно?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, the video editor is completely free. No paid features, no watermarks, no limits. Да, видео редактор полностью бесплатный."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to register? / Нужно ли регистрироваться?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No registration required. Just open the site and start editing. Регистрация не требуется."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are my videos uploaded to a server? / Мои видео загружаются на сервер?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No, all processing happens in your browser using WebAssembly (FFmpeg.wasm). Your files never leave your device. Нет, вся обработка происходит в вашем браузере."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What formats are supported? / Какие форматы поддерживаются?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "MP4, WebM, MOV, AVI, MKV, FLV and more. Output exported as MP4 (H.264 + AAC). Поддерживаются все популярные форматы."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I edit on my phone? / Можно ли редактировать на телефоне?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, the editor is mobile-friendly. For large videos, a computer is recommended. Да, редактор адаптирован для мобильных устройств."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Structured Data: WebSite (for sitelinks searchbox + parent site) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "VideoEditor by 6io.io",
+      "url": "https://videoeditor.6io.io/",
+      "publisher": {
+        "@type": "Organization",
+        "name": "6io.io",
+        "url": "https://6io.io",
+        "description": "AI video and image generation platform"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+    <!-- hreflang for bilingual SEO -->
+    <link rel="alternate" hreflang="ru" href="https://videoeditor.6io.io/" />
+    <link rel="alternate" hreflang="en" href="https://videoeditor.6io.io/" />
+    <link rel="alternate" hreflang="x-default" href="https://videoeditor.6io.io/" />
+
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Free Online Video Editor — Бесплатный видео редактор" />
+    <meta property="og:description" content="Trim, merge, add transitions — free, no registration, right in your browser. Обрезка, склейка, переходы — бесплатно, без регистрации." />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:url" content="https://videoeditor.6io.io/" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:locale:alternate" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Free Online Video Editor — Бесплатный видео редактор" />
+    <meta name="twitter:description" content="Trim, merge, add transitions — free, no registration, right in your browser." />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://videoeditor.6io.io/" />
+
+    <!-- Structured Data: WebApplication (bilingual) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Free Online Video Editor / Бесплатный онлайн видео редактор",
+      "description": "Free browser-based video editor. Trim, merge, add transitions and effects — no install, no registration, no watermarks. Бесплатный видеоредактор в браузере. Обрезка, склейка, переходы и эффекты.",
+      "url": "https://videoeditor.6io.io/",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript, WebAssembly",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Trim video / Обрезка видео",
+        "Merge multiple clips / Склейка видео",
+        "Smooth transitions between clips / Плавные переходы",
+        "Playback speed adjustment / Регулировка скорости",
+        "Volume control / Регулировка громкости",
+        "Frame capture / Извлечение кадров",
+        "Export to MP4 / Экспорт в MP4",
+        "Works offline / Работа без интернета",
+        "No watermarks / Без водяных знаков"
+      ],
+      "inLanguage": ["ru", "en"]
+    }
+    </script>
+    <!-- Structured Data: FAQPage (bilingual) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is it really free? / Это действительно бесплатно?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, the video editor is completely free. No paid features, no watermarks, no limits. Да, видео редактор полностью бесплатный."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to register? / Нужно ли регистрироваться?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No registration required. Just open the site and start editing. Регистрация не требуется."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are my videos uploaded to a server? / Мои видео загружаются на сервер?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No, all processing happens in your browser using WebAssembly (FFmpeg.wasm). Your files never leave your device. Нет, вся обработка происходит в вашем браузере."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What formats are supported? / Какие форматы поддерживаются?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "MP4, WebM, MOV, AVI, MKV, FLV and more. Output exported as MP4 (H.264 + AAC). Поддерживаются все популярные форматы."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I edit on my phone? / Можно ли редактировать на телефоне?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, the editor is mobile-friendly. For large videos, a computer is recommended. Да, редактор адаптирован для мобильных устройств."
+          }
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

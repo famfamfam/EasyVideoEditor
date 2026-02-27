@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://videoeditor.6io.io/sitemap.xml
