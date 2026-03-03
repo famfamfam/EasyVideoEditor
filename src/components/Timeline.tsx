@@ -136,6 +136,7 @@ export default function Timeline() {
   const [transitionMenu, setTransitionMenu] = useState<{ clipA: string; clipB: string; x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const tracksRef = useRef<HTMLDivElement>(null);
+  const addTrackBtnRef = useRef<HTMLButtonElement>(null);
   useLang(); // re-render on language change
 
   const { isMobile, isLandscape } = useMobileLayout();
@@ -434,7 +435,7 @@ export default function Timeline() {
       )}
 
       {/* Collapsible body */}
-      <div style={{ height: collapsed ? 0 : (isMobile ? timelineH : undefined), minHeight: collapsed ? 0 : (isMobile ? 50 : 140), overflow: 'hidden' }}
+      <div style={{ height: collapsed ? 0 : (isMobile ? timelineH : undefined), minHeight: collapsed ? 0 : (isMobile ? 50 : 140), overflow: collapsed ? 'hidden' : undefined }}
         className={collapsed ? '' : 'flex flex-col flex-1'}>
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-2 py-1 border-b border-white/5 bg-surface-50 overflow-x-auto" style={{ minHeight: 'auto' }}>
@@ -453,29 +454,13 @@ export default function Timeline() {
         {/* Add track dropdown */}
         <div className="relative flex-shrink-0">
           <button
+            ref={addTrackBtnRef}
             onClick={() => setShowAddTrack((v) => !v)}
             className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-gray-300 text-xs hover:bg-white/10 transition-colors"
             title={t('addTrack')}
           >
             <Plus size={13} /> <span className="hidden sm:inline">{t('addTrack')}</span> <ChevronDown size={11} className="opacity-60" />
           </button>
-          {showAddTrack && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-surface-100 border border-white/10 rounded-lg shadow-xl overflow-hidden min-w-[130px]"
-              onMouseLeave={() => setShowAddTrack(false)}>
-              <button onClick={() => { addTrack('video'); setShowAddTrack(false); }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-200 hover:bg-white/10 transition-colors">
-                <Film size={13} className="text-accent" /> {t('trackVideo')}
-              </button>
-              <button onClick={() => { addTrack('audio'); setShowAddTrack(false); }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-200 hover:bg-white/10 transition-colors">
-                <Music size={13} className="text-green-400" /> {t('trackAudio')}
-              </button>
-              <button onClick={() => { addTrack('text'); setShowAddTrack(false); }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-200 hover:bg-white/10 transition-colors">
-                <Type size={13} className="text-amber-400" /> {t('trackText')}
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="flex-1" />
@@ -577,6 +562,31 @@ export default function Timeline() {
         </div>
       </div>
       </div>{/* close collapsible body */}
+
+      {/* Add track dropdown — rendered fixed so no overflow clips it */}
+      {showAddTrack && addTrackBtnRef.current && (() => {
+        const r = addTrackBtnRef.current!.getBoundingClientRect();
+        return (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowAddTrack(false)} />
+            <div className="fixed z-50 bg-surface-100 border border-white/10 rounded-lg shadow-xl overflow-hidden min-w-[130px]"
+              style={{ top: r.bottom + 4, left: r.left }}>
+              <button onClick={() => { addTrack('video'); setShowAddTrack(false); }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-200 hover:bg-white/10 transition-colors">
+                <Film size={13} className="text-accent" /> {t('trackVideo')}
+              </button>
+              <button onClick={() => { addTrack('audio'); setShowAddTrack(false); }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-200 hover:bg-white/10 transition-colors">
+                <Music size={13} className="text-green-400" /> {t('trackAudio')}
+              </button>
+              <button onClick={() => { addTrack('text'); setShowAddTrack(false); }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-200 hover:bg-white/10 transition-colors">
+                <Type size={13} className="text-amber-400" /> {t('trackText')}
+              </button>
+            </div>
+          </>
+        );
+      })()}
 
       {/* transition context menu */}
       {transitionMenu && (
