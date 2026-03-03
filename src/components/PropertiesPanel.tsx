@@ -8,7 +8,7 @@ import { fmtTime } from '../lib/media-utils';
 import type { Clip, ClipEffects, TextItem, TransitionType } from '../types';
 import { t, useLang } from '../lib/i18n';
 
-export default function PropertiesPanel() {
+export default function PropertiesPanel({ mobile }: { mobile?: boolean }) {
   const clips = useEditorStore((s) => s.clips);
   const media = useEditorStore((s) => s.media);
   const selectedClipIds = useEditorStore((s) => s.selectedClipIds);
@@ -55,11 +55,18 @@ export default function PropertiesPanel() {
 
   // --- early returns after all hooks ---
 
-  if (selectedText) return <TextProperties text={selectedText} updateTextItem={updateTextItem} />;
+  const asideCls = mobile
+    ? 'h-full bg-surface-50 flex flex-col overflow-y-auto'
+    : 'w-64 bg-surface-50 border-l border-white/5 flex flex-col overflow-y-auto';
+  const asideEmptyCls = mobile
+    ? 'h-full bg-surface-50 flex flex-col items-center justify-center text-gray-500 text-xs p-4'
+    : 'w-64 bg-surface-50 border-l border-white/5 flex flex-col items-center justify-center text-gray-500 text-xs p-4';
+
+  if (selectedText) return <TextProperties text={selectedText} updateTextItem={updateTextItem} mobile={mobile} />;
 
   if (!clip || selectedClips.length === 0) {
     return (
-      <aside className="w-64 bg-surface-50 border-l border-white/5 flex flex-col items-center justify-center text-gray-500 text-xs p-4">
+      <aside className={asideEmptyCls}>
         <Sliders size={24} className="mb-2 text-gray-600" />
         <p className="text-center" style={{ whiteSpace: 'pre-line' }}>{t('selectClipHint')}</p>
       </aside>
@@ -68,7 +75,7 @@ export default function PropertiesPanel() {
 
   if (selectedClips.length > 1) {
     return (
-      <aside className="w-64 bg-surface-50 border-l border-white/5 flex flex-col items-center justify-center text-gray-500 text-xs p-4">
+      <aside className={asideEmptyCls}>
         <Sliders size={24} className="mb-2 text-gray-600" />
         {t('selectedClips')}: {selectedClips.length}
       </aside>
@@ -87,7 +94,7 @@ export default function PropertiesPanel() {
   const fx = clip.effects ?? {};
 
   return (
-    <aside className="w-64 bg-surface-50 border-l border-white/5 flex flex-col overflow-y-auto">
+    <aside className={asideCls}>
       <div className="p-3 border-b border-white/5 flex items-center gap-2">
         {isAudio ? <Music size={14} className="text-green-400" /> : <Film size={14} className="text-accent" />}
         <span className="text-xs font-medium text-gray-200 truncate">{mf?.name ?? t('clip')}</span>
@@ -286,12 +293,16 @@ function TransitionAdder({ label, onAdd }: { label: string; onAdd: (type: Transi
 }
 
 /* ── Text Properties ─────────────────────────────────────── */
-function TextProperties({ text, updateTextItem }: { text: TextItem; updateTextItem: (id: string, patch: Partial<TextItem>) => void }) {
+function TextProperties({ text, updateTextItem, mobile }: { text: TextItem; updateTextItem: (id: string, patch: Partial<TextItem>) => void; mobile?: boolean }) {
   const update = (patch: Partial<TextItem>) => updateTextItem(text.id, patch);
   useLang();
 
+  const asideCls = mobile
+    ? 'h-full bg-surface-50 flex flex-col overflow-y-auto'
+    : 'w-64 bg-surface-50 border-l border-white/5 flex flex-col overflow-y-auto';
+
   return (
-    <aside className="w-64 bg-surface-50 border-l border-white/5 flex flex-col overflow-y-auto">
+    <aside className={asideCls}>
       <div className="p-3 border-b border-white/5 flex items-center gap-2">
         <Type size={14} className="text-amber-400" />
         <span className="text-xs font-medium text-gray-200">{t('text')}</span>

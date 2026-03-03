@@ -116,11 +116,11 @@ export default function PreviewPanel() {
         )}
       </div>
 
-      <div className="flex items-center gap-3 px-4 py-2 bg-surface-50 border-t border-white/5">
-        <button onClick={skipBack} className="p-1.5 text-gray-400 hover:text-white rounded transition-colors" title={t('previewSkipBack')}>
-          <SkipBack size={16} />
+      <div className="flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4 py-2 bg-surface-50 border-t border-white/5">
+        <button onClick={skipBack} className="p-1 sm:p-1.5 text-gray-400 hover:text-white rounded transition-colors" title={t('previewSkipBack')}>
+          <SkipBack size={14} className="sm:w-4 sm:h-4" />
         </button>
-        <button onClick={stepBack} className="p-1 text-gray-400 hover:text-white rounded transition-colors" title={t('previewStepBack')}>
+        <button onClick={stepBack} className="hidden sm:block p-1 text-gray-400 hover:text-white rounded transition-colors" title={t('previewStepBack')}>
           <ChevronLeft size={16} />
         </button>
         <button onClick={togglePlay}
@@ -128,20 +128,20 @@ export default function PreviewPanel() {
           title={playing ? t('previewPause') : t('previewPlay')}>
           {playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
         </button>
-        <button onClick={stepForward} className="p-1 text-gray-400 hover:text-white rounded transition-colors" title={t('previewStepForward')}>
+        <button onClick={stepForward} className="hidden sm:block p-1 text-gray-400 hover:text-white rounded transition-colors" title={t('previewStepForward')}>
           <ChevronRight size={16} />
         </button>
-        <button onClick={skipForward} className="p-1.5 text-gray-400 hover:text-white rounded transition-colors" title={t('previewSkipForward')}>
-          <SkipForward size={16} />
+        <button onClick={skipForward} className="p-1 sm:p-1.5 text-gray-400 hover:text-white rounded transition-colors" title={t('previewSkipForward')}>
+          <SkipForward size={14} className="sm:w-4 sm:h-4" />
         </button>
-        <div className="ml-3 text-xs font-mono text-gray-400">
+        <div className="ml-1 sm:ml-3 text-[10px] sm:text-xs font-mono text-gray-400">
           {fmtTimecode(currentTime)} <span className="text-gray-600">/</span> {fmtTimecode(dur)}
         </div>
         <div className="flex-1" />
-        <button onClick={captureFrame} className="p-1.5 text-gray-400 hover:text-white rounded transition-colors" title={t('previewCaptureFrame')}>
-          <Camera size={16} />
+        <button onClick={captureFrame} className="p-1 sm:p-1.5 text-gray-400 hover:text-white rounded transition-colors" title={t('previewCaptureFrame')}>
+          <Camera size={14} className="sm:w-4 sm:h-4" />
         </button>
-        <span className="text-[10px] text-gray-500">{project.width}×{project.height}</span>
+        <span className="text-[10px] text-gray-500 hidden sm:inline">{project.width}×{project.height}</span>
       </div>
     </div>
   );

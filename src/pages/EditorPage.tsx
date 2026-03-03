@@ -1,4 +1,4 @@
-﻿import { useEffect, useCallback } from 'react';
+﻿import { useEffect, useCallback, useState } from 'react';
 
 import Header from '../components/Header';
 import MediaPanel from '../components/MediaPanel';
@@ -6,6 +6,9 @@ import PreviewPanel from '../components/PreviewPanel';
 import PropertiesPanel from '../components/PropertiesPanel';
 import Timeline from '../components/Timeline';
 import { useEditorStore } from '../store/editor-store';
+import { FolderOpen, Monitor, Sliders } from 'lucide-react';
+import { t, useLang } from '../lib/i18n';
+import { useMobileLayout } from '../lib/use-mobile';
 
 export default function EditorPage() {
   const isPlaying = useEditorStore((s) => s.playback.playing);
@@ -148,19 +151,100 @@ export default function EditorPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
+  // Mobile panel tab state
+  const [mobileTab, setMobileTab] = useState<'media' | 'preview' | 'properties'>('preview');
+  const { isMobile, isLandscape, isPortrait } = useMobileLayout();
+  useLang(); // re-render on language change
+
   return (
     <div className="h-screen flex flex-col bg-surface text-gray-100 overflow-hidden">
       <Header />
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <MediaPanel />
-
-        <div className="flex-1 min-w-0 flex flex-col">
-          <PreviewPanel />
+      {/* ── Desktop layout (md+) ── */}
+      {!isMobile && (
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          <MediaPanel />
+          <div className="flex-1 min-w-0 flex flex-col">
+            <PreviewPanel />
+          </div>
+          <PropertiesPanel />
         </div>
+      )}
 
-        <PropertiesPanel />
-      </div>
+      {/* ── Mobile PORTRAIT layout ── */}
+      {isPortrait && (
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* Tab bar */}
+          <div className="flex border-b border-white/5 bg-surface-50 flex-shrink-0">
+            {([
+              { key: 'media' as const, icon: FolderOpen, label: t('tabMedia') },
+              { key: 'preview' as const, icon: Monitor, label: t('tabPreview') },
+              { key: 'properties' as const, icon: Sliders, label: t('tabProperties') },
+            ]).map(({ key, icon: Icon, label }) => (
+              <button
+                key={key}
+                onClick={() => setMobileTab(key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
+                  mobileTab === key
+                    ? 'text-accent-light border-b-2 border-accent-light bg-accent/10'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                <Icon size={14} />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {mobileTab === 'media' && <MediaPanel mobile />}
+            {mobileTab === 'preview' && (
+              <div className="flex-1 min-h-0 flex flex-col h-full">
+                <PreviewPanel />
+              </div>
+            )}
+            {mobileTab === 'properties' && <PropertiesPanel mobile />}
+          </div>
+        </div>
+      )}
+
+      {/* ── Mobile LANDSCAPE layout ── */}
+      {isLandscape && (
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Left: compact sidebar with tabs for media / properties */}
+          <div className="w-48 flex-shrink-0 flex flex-col border-r border-white/5 bg-surface-50 min-h-0">
+            <div className="flex border-b border-white/5 flex-shrink-0">
+              {([
+                { key: 'media' as const, icon: FolderOpen, label: t('tabMedia') },
+                { key: 'properties' as const, icon: Sliders, label: t('tabProperties') },
+              ]).map(({ key, icon: Icon, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setMobileTab(key)}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-[10px] font-medium transition-colors ${
+                    (mobileTab === key || (mobileTab === 'preview' && key === 'media'))
+                      ? 'text-accent-light border-b-2 border-accent-light bg-accent/10'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  <Icon size={12} />
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {(mobileTab === 'media' || mobileTab === 'preview') && <MediaPanel mobile />}
+              {mobileTab === 'properties' && <PropertiesPanel mobile />}
+            </div>
+          </div>
+
+          {/* Right: preview fills remaining space */}
+          <div className="flex-1 min-w-0 flex flex-col min-h-0">
+            <PreviewPanel />
+          </div>
+        </div>
+      )}
 
       <Timeline />
     </div>

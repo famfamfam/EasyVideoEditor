@@ -4,12 +4,13 @@
  */
 import React, { useCallback, useMemo, useRef, useState, useEffect, memo, type DragEvent } from 'react';
 import {
-  Plus, Minus, ZoomIn, Type, Scissors, Volume2, VolumeX, Lock, Unlock, Eye, EyeOff, ChevronRight, ChevronLeft, Trash2, Music, Film, SplitSquareVertical, ChevronDown,
+  Plus, Minus, ZoomIn, Type, Scissors, Volume2, VolumeX, Lock, Unlock, Eye, EyeOff, ChevronRight, ChevronLeft, Trash2, Music, Film, SplitSquareVertical, ChevronDown, GripHorizontal, ChevronUp,
 } from 'lucide-react';
 import { useEditorStore, uid } from '../store/editor-store';
 import { importFiles } from '../lib/media-utils';
 import type { Clip, TextItem, Track, Transition, TransitionType } from '../types';
 import { t, useLang } from '../lib/i18n';
+import { useMobileLayout } from '../lib/use-mobile';
 
 /* ── constants ────────────────────────────────────────────── */
 const MIN_PPS = 20;
@@ -130,11 +131,54 @@ export default function Timeline() {
   const [showAddTrack, setShowAddTrack] = useState(false);
   const [dragTrackIdx, setDragTrackIdx] = useState<number | null>(null);
   const [dropTrackIdx, setDropTrackIdx] = useState<number | null>(null);
-  const [dragging, setDragging] = useState<{ clipId: string; mode: 'move' | 'trimL' | 'trimR'; startX: number; origStart: number; origDur: number; origSrcStart: number; origSrcEnd: number; isText: boolean } | null>(null);
+  const [dropTargetTrackId, setDropTargetTrackId] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<{ clipId: string; mode: 'move' | 'trimL' | 'trimR'; startX: number; startY: number; origStart: number; origDur: number; origSrcStart: number; origSrcEnd: number; isText: boolean; origTrackId: string } | null>(null);
   const [transitionMenu, setTransitionMenu] = useState<{ clipA: string; clipB: string; x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const tracksRef = useRef<HTMLDivElement>(null);
   useLang(); // re-render on language change
+
+  const { isMobile, isLandscape } = useMobileLayout();
+
+  /* ── collapsible / resizable height ─── */
+  const defaultH = isLandscape ? 80 : isMobile ? 130 : 200;
+  const [timelineH, setTimelineH] = useState(defaultH);
+  const [collapsed, setCollapsed] = useState(false);
+  const resizeRef = useRef<{ startY: number; startH: number } | null>(null);
+  const [resizing, setResizing] = useState(false);
+
+  // Update default height when orientation changes
+  useEffect(() => {
+    if (!resizing) setTimelineH(defaultH);
+  }, [defaultH]);
+
+  // Resize drag via pointer events (works for both mouse and touch)
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: PointerEvent) => {
+      if (!resizeRef.current) return;
+      const dy = resizeRef.current.startY - e.clientY;
+      const newH = Math.max(50, Math.min(400, resizeRef.current.startH + dy));
+      setTimelineH(newH);
+    };
+    const onUp = () => {
+      resizeRef.current = null;
+      setResizing(false);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [resizing]);
+
+  const handleResizeStart = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizeRef.current = { startY: e.clientY, startH: timelineH };
+    setResizing(true);
+  }, [timelineH]);
 
   // Pre-build mediaId → MediaFile map so ClipBlock doesn't call .find on every render
   const mediaMap = useMemo(() => new Map(media.map((m) => [m.id, m])), [media]);
@@ -176,20 +220,54 @@ export default function Timeline() {
     return val;
   }, [snapPoints, pps]);
 
-  /* ── drag move / trim ─── */
+  /* ── drag move / trim (mouse + touch) ─── */
   useEffect(() => {
     if (!dragging) return;
-    const onMove = (e: MouseEvent) => {
-      const dx = e.clientX - dragging.startX;
+    const getClientX = (e: MouseEvent | TouchEvent) =>
+      'touches' in e ? e.touches[0]?.clientX ?? dragging.startX : e.clientX;
+    const getClientY = (e: MouseEvent | TouchEvent) =>
+      'touches' in e ? e.touches[0]?.clientY ?? dragging.startY : e.clientY;
+
+    const onMove = (e: MouseEvent | TouchEvent) => {
+      const dx = getClientX(e) - dragging.startX;
       const dt = dx / pps;
 
       if (dragging.mode === 'move') {
         const newStart = snapTo(Math.max(0, dragging.origStart + dt));
-        if (dragging.isText) {
-          updateTextItem(dragging.clipId, { startOnTimeline: newStart });
-        } else {
-          updateClip(dragging.clipId, { startOnTimeline: newStart });
+
+        // ── Cross-track movement: detect which track the pointer is over ──
+        const clientY = getClientY(e);
+        let targetTrackId: string | undefined;
+        if (tracksRef.current) {
+          const trackEls = tracksRef.current.querySelectorAll<HTMLElement>('[data-trackbg]');
+          for (const el of trackEls) {
+            const rect = el.getBoundingClientRect();
+            if (clientY >= rect.top && clientY <= rect.bottom) {
+              // Find which track this element belongs to by index
+              const idx = Array.from(trackEls).indexOf(el);
+              if (idx >= 0 && idx < tracks.length) {
+                const candidate = tracks[idx];
+                // Only allow same-kind tracks (video↔video, audio↔audio, text↔text)
+                const origTrack = tracks.find((t) => t.id === dragging.origTrackId);
+                if (candidate && origTrack && candidate.kind === origTrack.kind && !candidate.locked) {
+                  targetTrackId = candidate.id;
+                }
+              }
+              break;
+            }
+          }
         }
+
+        if (dragging.isText) {
+          const patch: Partial<TextItem> = { startOnTimeline: newStart };
+          if (targetTrackId) patch.trackId = targetTrackId;
+          updateTextItem(dragging.clipId, patch);
+        } else {
+          const patch: Partial<Clip> = { startOnTimeline: newStart };
+          if (targetTrackId) patch.trackId = targetTrackId;
+          updateClip(dragging.clipId, patch);
+        }
+        setDropTargetTrackId(targetTrackId ?? null);
       } else if (dragging.mode === 'trimL') {
         const newStart = snapTo(Math.max(0, dragging.origStart + dt));
         const delta = newStart - dragging.origStart;
@@ -210,15 +288,27 @@ export default function Timeline() {
         }
       }
     };
-    const onUp = () => setDragging(null);
+    const onUp = () => { setDragging(null); setDropTargetTrackId(null); };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, [dragging, pps, snapTo, updateClip, updateTextItem]);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+    window.addEventListener('touchcancel', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+      window.removeEventListener('touchcancel', onUp);
+    };
+  }, [dragging, pps, snapTo, updateClip, updateTextItem, tracks]);
 
-  /* ── start drag ─── */
-  const startDrag = useCallback((e: React.MouseEvent, id: string, mode: 'move' | 'trimL' | 'trimR', isText: boolean) => {
+  /* ── start drag (mouse + touch) ─── */
+  const startDrag = useCallback((e: React.MouseEvent | React.TouchEvent, id: string, mode: 'move' | 'trimL' | 'trimR', isText: boolean) => {
     e.stopPropagation();
+    const clientX = 'touches' in e ? e.touches[0]?.clientX ?? 0 : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0]?.clientY ?? 0 : e.clientY;
+    const isMulti = 'ctrlKey' in e ? (e.ctrlKey || e.metaKey) : false;
     // Check if track is locked
     const item = isText ? textItems.find((t) => t.id === id) : clips.find((c) => c.id === id);
     if (!item) return;
@@ -226,14 +316,15 @@ export default function Timeline() {
     if (track?.locked) return; // locked tracks cannot be edited
     pushHistory();
     setDragging({
-      clipId: id, mode, startX: e.clientX, isText,
+      clipId: id, mode, startX: clientX, startY: clientY, isText,
       origStart: item.startOnTimeline,
       origDur: item.duration,
       origSrcStart: isText ? 0 : (item as Clip).sourceStart,
       origSrcEnd: isText ? 0 : (item as Clip).sourceEnd,
+      origTrackId: item.trackId,
     });
     if (isText) selectText(id);
-    else selectClip(id, e.ctrlKey || e.metaKey);
+    else selectClip(id, isMulti);
   }, [clips, textItems, tracks, pushHistory, selectClip, selectText]);
 
   /* ── drop from MediaPanel ─── */
@@ -322,29 +413,51 @@ export default function Timeline() {
   }, [pps, setCurrentTime, selectClip, selectText]);
 
   return (
-    <div className="flex flex-col bg-surface border-t border-white/5 select-none" style={{ minHeight: 200 }}>
+    <div className="flex flex-col bg-surface border-t border-white/5 select-none">
+      {/* Resize handle (mobile only) */}
+      {isMobile && (
+        <div
+          className="touch-none flex items-center justify-center gap-2 bg-surface-50 border-b border-white/5 cursor-row-resize"
+          style={{ height: 24, minHeight: 24, minWidth: 'auto' }}
+          onPointerDown={handleResizeStart}
+        >
+          <GripHorizontal size={14} className="text-gray-500" />
+          <button
+            onClick={(e) => { e.stopPropagation(); setCollapsed((v) => !v); }}
+            className="text-gray-500 hover:text-white"
+            style={{ minHeight: 'auto', minWidth: 'auto', padding: 0 }}
+            title={collapsed ? t('expandTimeline') : t('collapseTimeline')}
+          >
+            {collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </div>
+      )}
+
+      {/* Collapsible body */}
+      <div style={{ height: collapsed ? 0 : (isMobile ? timelineH : undefined), minHeight: collapsed ? 0 : (isMobile ? 50 : 140), overflow: 'hidden' }}
+        className={collapsed ? '' : 'flex flex-col flex-1'}>
       {/* Toolbar */}
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-white/5 bg-surface-50">
-        <button onClick={handleAddText} className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 text-amber-300 text-xs hover:bg-amber-500/30 transition-colors" title={`${t('addText')} (T)`}>
-          <Type size={13} /> {t('addText')}
+      <div className="flex items-center gap-1 px-2 py-1 border-b border-white/5 bg-surface-50 overflow-x-auto" style={{ minHeight: 'auto' }}>
+        <button onClick={handleAddText} className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 text-amber-300 text-xs hover:bg-amber-500/30 transition-colors flex-shrink-0" title={`${t('addText')} (T)`}>
+          <Type size={13} /> <span className="hidden sm:inline">{t('addText')}</span>
         </button>
-        <button onClick={handleSplit} disabled={selectedClipIds.size === 0} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-gray-300 text-xs hover:bg-white/10 transition-colors disabled:opacity-30" title={`${t('split')} (S)`}>
-          <Scissors size={13} /> {t('split')}
+        <button onClick={handleSplit} disabled={selectedClipIds.size === 0} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-gray-300 text-xs hover:bg-white/10 transition-colors disabled:opacity-30 flex-shrink-0" title={`${t('split')} (S)`}>
+          <Scissors size={13} /> <span className="hidden sm:inline">{t('split')}</span>
         </button>
         <button onClick={() => { selectedClipIds.forEach((id) => removeClip(id)); if (selectedTextId) removeTextItem(selectedTextId); }}
           disabled={selectedClipIds.size === 0 && !selectedTextId}
-          className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-gray-300 text-xs hover:bg-white/10 transition-colors disabled:opacity-30" title={`${t('delete')} (Del)`}>
-          <Trash2 size={13} /> {t('delete')}
+          className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-gray-300 text-xs hover:bg-white/10 transition-colors disabled:opacity-30 flex-shrink-0" title={`${t('delete')} (Del)`}>
+          <Trash2 size={13} /> <span className="hidden sm:inline">{t('delete')}</span>
         </button>
 
         {/* Add track dropdown */}
-        <div className="relative">
+        <div className="relative flex-shrink-0">
           <button
             onClick={() => setShowAddTrack((v) => !v)}
             className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-gray-300 text-xs hover:bg-white/10 transition-colors"
             title={t('addTrack')}
           >
-            <Plus size={13} /> {t('addTrack')} <ChevronDown size={11} className="opacity-60" />
+            <Plus size={13} /> <span className="hidden sm:inline">{t('addTrack')}</span> <ChevronDown size={11} className="opacity-60" />
           </button>
           {showAddTrack && (
             <div className="absolute top-full left-0 mt-1 z-50 bg-surface-100 border border-white/10 rounded-lg shadow-xl overflow-hidden min-w-[130px]"
@@ -374,7 +487,7 @@ export default function Timeline() {
       {/* Ruler + Tracks area */}
       <div className="flex flex-1 overflow-hidden" ref={containerRef}>
         {/* Track headers */}
-        <div className="w-36 flex-shrink-0 bg-surface-100 border-r border-white/5 flex flex-col">
+        <div className="w-20 sm:w-36 flex-shrink-0 bg-surface-100 border-r border-white/5 flex flex-col">
           <div style={{ height: RULER_H }} className="border-b border-white/5" />
           {tracks.map((track, idx) => (
             <TrackHeader
@@ -427,7 +540,7 @@ export default function Timeline() {
                 return (
                   <div key={track.id}
                     data-trackbg="1"
-                    className="relative border-b border-white/5 group"
+                    className={`relative border-b border-white/5 group ${dropTargetTrackId === track.id ? 'bg-accent/10 ring-1 ring-inset ring-accent/40' : ''}`}
                     style={{ height: h }}
                     onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
                     onDrop={(e) => handleDrop(e, track.id)}>
@@ -463,6 +576,7 @@ export default function Timeline() {
           </div>
         </div>
       </div>
+      </div>{/* close collapsible body */}
 
       {/* transition context menu */}
       {transitionMenu && (
@@ -481,7 +595,7 @@ export default function Timeline() {
 /* ── Clip Block ───────────────────────────────────────────── */
 const ClipBlock = memo(function ClipBlock({ clip, track, pps, h, selected, mediaName, filmstrip, onStartDrag, onContextMenu }: {
   clip: Clip; track: Track; pps: number; h: number; selected: boolean; mediaName: string; filmstrip?: string[];
-  onStartDrag: (e: React.MouseEvent, id: string, mode: 'move' | 'trimL' | 'trimR', isText: boolean) => void;
+  onStartDrag: (e: React.MouseEvent | React.TouchEvent, id: string, mode: 'move' | 'trimL' | 'trimR', isText: boolean) => void;
   onContextMenu: (e: React.MouseEvent, clipId: string) => void;
 }) {
   const left = clip.startOnTimeline * pps;
@@ -502,6 +616,15 @@ const ClipBlock = memo(function ClipBlock({ clip, track, pps, h, selected, media
         const relX = e.clientX - rect.left;
         if (relX < HANDLE_W) onStartDrag(e, clip.id, 'trimL', false);
         else if (relX > rect.width - HANDLE_W) onStartDrag(e, clip.id, 'trimR', false);
+        else onStartDrag(e, clip.id, 'move', false);
+      }}
+      onTouchStart={(e) => {
+        const touch = e.touches[0];
+        if (!touch) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const relX = touch.clientX - rect.left;
+        if (relX < HANDLE_W * 3) onStartDrag(e, clip.id, 'trimL', false);
+        else if (relX > rect.width - HANDLE_W * 3) onStartDrag(e, clip.id, 'trimR', false);
         else onStartDrag(e, clip.id, 'move', false);
       }}
     >
@@ -544,7 +667,7 @@ const ClipBlock = memo(function ClipBlock({ clip, track, pps, h, selected, media
 /* ── Text Block ───────────────────────────────────────────── */
 const TextBlock = memo(function TextBlock({ item, pps, h, selected, track, onStartDrag }: {
   item: TextItem; pps: number; h: number; selected: boolean; track?: Track;
-  onStartDrag: (e: React.MouseEvent, id: string, mode: 'move' | 'trimL' | 'trimR', isText: boolean) => void;
+  onStartDrag: (e: React.MouseEvent | React.TouchEvent, id: string, mode: 'move' | 'trimL' | 'trimR', isText: boolean) => void;
 }) {
   const left = item.startOnTimeline * pps;
   const width = Math.max(item.duration * pps, 4);
@@ -560,6 +683,15 @@ const TextBlock = memo(function TextBlock({ item, pps, h, selected, track, onSta
         const relX = e.clientX - rect.left;
         if (relX < HANDLE_W) onStartDrag(e, item.id, 'trimL', true);
         else if (relX > rect.width - HANDLE_W) onStartDrag(e, item.id, 'trimR', true);
+        else onStartDrag(e, item.id, 'move', true);
+      }}
+      onTouchStart={(e) => {
+        const touch = e.touches[0];
+        if (!touch) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const relX = touch.clientX - rect.left;
+        if (relX < HANDLE_W * 3) onStartDrag(e, item.id, 'trimL', true);
+        else if (relX > rect.width - HANDLE_W * 3) onStartDrag(e, item.id, 'trimR', true);
         else onStartDrag(e, item.id, 'move', true);
       }}
     >
@@ -617,19 +749,19 @@ const TrackHeader = memo(function TrackHeader({
       className={`flex items-center gap-1 px-1 border-b border-white/5 text-xs text-gray-400 bg-surface-100 hover:bg-surface-200 transition-colors cursor-grab active:cursor-grabbing ${isDragOver ? 'ring-1 ring-inset ring-accent/60 bg-accent/10' : ''}`}
       style={{ height: h }}
     >
-      <span className={`mr-0.5 opacity-30 hover:opacity-70 cursor-grab`}>⠿</span>
+      <span className="hidden sm:inline mr-0.5 opacity-30 hover:opacity-70 cursor-grab">⠿</span>
       {track.kind === 'video' && <Film size={12} className={iconColor} />}
       {track.kind === 'audio' && <Music size={12} className={iconColor} />}
       {track.kind === 'text' && <Type size={12} className={iconColor} />}
-      <span className="truncate flex-1 text-gray-300">{displayName}</span>
+      <span className="truncate flex-1 text-gray-300 text-[10px] sm:text-xs">{displayName}</span>
       <button onClick={() => updateTrack(track.id, { muted: !track.muted })} className="p-0.5 hover:text-white" title={track.muted ? t('unmuteTrack') : t('muteTrack')}>
         {track.muted ? <VolumeX size={11} className="text-red-400" /> : <Volume2 size={11} />}
       </button>
-      <button onClick={() => updateTrack(track.id, { locked: !track.locked })} className="p-0.5 hover:text-white" title={track.locked ? t('unlockTrack') : t('lockTrack')}>
+      <button onClick={() => updateTrack(track.id, { locked: !track.locked })} className="hidden sm:block p-0.5 hover:text-white" title={track.locked ? t('unlockTrack') : t('lockTrack')}>
         {track.locked ? <Lock size={11} className="text-yellow-400" /> : <Unlock size={11} />}
       </button>
       {track.kind !== 'audio' && (
-        <button onClick={() => updateTrack(track.id, { visible: !track.visible })} className="p-0.5 hover:text-white" title={track.visible ? t('hideTrack') : t('showTrack')}>
+        <button onClick={() => updateTrack(track.id, { visible: !track.visible })} className="hidden sm:block p-0.5 hover:text-white" title={track.visible ? t('hideTrack') : t('showTrack')}>
           {track.visible ? <Eye size={11} /> : <EyeOff size={11} className="text-gray-600" />}
         </button>
       )}

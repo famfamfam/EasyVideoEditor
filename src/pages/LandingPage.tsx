@@ -74,7 +74,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
             <button onClick={() => navigate('/editor')}
-              className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl text-sm font-semibold transition-all hover:scale-105">
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl text-xs sm:text-sm font-semibold transition-all hover:scale-105">
               {t('openEditor')} <ChevronRight size={16} />
             </button>
           </div>

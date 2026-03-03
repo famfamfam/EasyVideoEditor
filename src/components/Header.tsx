@@ -92,8 +92,8 @@ export default function Header({ onImport }: HeaderProps) {
   }, [onImport]);
 
   return (
-    <header className="flex items-center gap-2 px-3 py-2 bg-surface-50 border-b border-white/5 flex-shrink-0">
-      <div className="flex items-center gap-2 mr-2 cursor-pointer" onClick={() => window.location.href = 'https://6io.io'}>
+    <header className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-surface-50 border-b border-white/5 flex-shrink-0 overflow-x-auto">
+      <div className="flex items-center gap-2 mr-1 sm:mr-2 cursor-pointer flex-shrink-0" onClick={() => window.location.href = 'https://6io.io'}>
         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
           <Film size={14} />
         </div>
@@ -101,11 +101,11 @@ export default function Header({ onImport }: HeaderProps) {
       </div>
 
       <button onClick={handleImport}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent/20 hover:bg-accent/30 text-accent-light rounded-lg transition-colors">
-        <Plus size={14} /> {t('import')}
+        className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-medium bg-accent/20 hover:bg-accent/30 text-accent-light rounded-lg transition-colors flex-shrink-0">
+        <Plus size={14} /> <span className="hidden xs:inline">{t('import')}</span>
       </button>
 
-      <div className="flex items-center gap-0.5 ml-2">
+      <div className="flex items-center gap-0.5 ml-1 sm:ml-2 flex-shrink-0">
         <button onClick={undo} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors" title={t('undo')}>
           <Undo2 size={16} />
         </button>
@@ -114,19 +114,19 @@ export default function Header({ onImport }: HeaderProps) {
         </button>
       </div>
 
-      <div className="ml-auto flex items-center gap-3 text-xs text-gray-400">
-        <span className="font-mono">{fmtTimecode(playback.currentTime)}</span>
-        <span>/</span>
-        <span className="font-mono">{fmtTimecode(totalDuration())}</span>
+      <div className="ml-auto flex items-center gap-1 sm:gap-3 text-xs text-gray-400 flex-shrink-0">
+        <span className="font-mono text-[10px] sm:text-xs">{fmtTimecode(playback.currentTime)}</span>
+        <span className="hidden sm:inline">/</span>
+        <span className="font-mono text-[10px] sm:text-xs hidden sm:inline">{fmtTimecode(totalDuration())}</span>
       </div>
 
       <LanguageSwitcher />
 
-      <div className="flex items-center gap-2 ml-2">
+      <div className="flex items-center gap-1 sm:gap-2 ml-1 sm:ml-2 flex-shrink-0">
         {exporting && (
-          <div className="flex items-center gap-2 text-xs text-purple-300">
+          <div className="flex items-center gap-1 sm:gap-2 text-xs text-purple-300">
             <Loader2 size={14} className="animate-spin" />
-            <span>{exportMessage}</span>
+            <span className="hidden sm:inline">{exportMessage}</span>
             <span className="font-bold">{exportProgress}%</span>
           </div>
         )}
@@ -134,45 +134,45 @@ export default function Header({ onImport }: HeaderProps) {
         {resultUrl && !exporting && (
           <>
             <button onClick={() => setShowPreview(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors">
-              <Play size={14} /> {t('preview')}
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors">
+              <Play size={14} /> <span className="hidden sm:inline">{t('preview')}</span>
             </button>
             <button onClick={handleDownload}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-500 rounded-lg transition-colors">
-              <Download size={14} /> {t('download')} ({fmtFileSize(resultSize)})
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-500 rounded-lg transition-colors">
+              <Download size={14} /> <span className="hidden sm:inline">{t('download')} ({fmtFileSize(resultSize)})</span>
             </button>
           </>
         )}
 
         <button onClick={handleExport}
           disabled={(clips.length === 0 && textItems.length === 0) || exporting}
-          className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-          {exporting ? (<><Loader2 size={14} className="animate-spin" /> {t('exporting')}</>) : (<><Download size={14} /> {t('export')}</>)}
+          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+          {exporting ? (<><Loader2 size={14} className="animate-spin" /> <span className="hidden sm:inline">{t('exporting')}</span></>) : (<><Download size={14} /> <span className="hidden sm:inline">{t('export')}</span></>)}
         </button>
       </div>
 
       {/* Preview modal */}
       {showPreview && resultUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setShowPreview(false)}>
-          <div className="relative bg-surface-100 rounded-xl shadow-2xl border border-white/10 max-w-4xl w-full mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setShowPreview(false)}>
+          <div className="relative bg-surface-100 rounded-t-xl sm:rounded-xl shadow-2xl border border-white/10 max-w-4xl w-full sm:mx-4 overflow-hidden max-h-[90vh] sm:max-h-none" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-b border-white/10">
               <span className="text-sm font-semibold text-gray-200">{t('previewTitle')}</span>
               <div className="flex items-center gap-2">
                 <button onClick={handleDownload}
-                  className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-green-600 hover:bg-green-500 rounded-lg transition-colors">
-                  <Download size={12} /> {t('download')} ({fmtFileSize(resultSize)})
+                  className="flex items-center gap-1.5 px-2 sm:px-3 py-1 text-xs font-medium bg-green-600 hover:bg-green-500 rounded-lg transition-colors">
+                  <Download size={12} /> <span className="hidden sm:inline">{t('download')}</span> ({fmtFileSize(resultSize)})
                 </button>
                 <button onClick={() => setShowPreview(false)} className="p-1 text-gray-400 hover:text-white rounded transition-colors">
                   <X size={18} />
                 </button>
               </div>
             </div>
-            <div className="p-4 flex justify-center bg-black">
+            <div className="p-2 sm:p-4 flex justify-center bg-black">
               <video
                 src={resultUrl}
                 controls
                 autoPlay
-                className="max-w-full max-h-[70vh] rounded"
+                className="max-w-full max-h-[60vh] sm:max-h-[70vh] rounded"
                 style={{ aspectRatio: `${project.width}/${project.height}` }}
               />
             </div>

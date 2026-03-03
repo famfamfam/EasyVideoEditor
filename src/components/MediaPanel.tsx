@@ -3,17 +3,19 @@
  */
 import { useEditorStore, uid } from '../store/editor-store';
 import { fmtTime } from '../lib/media-utils';
-import { Film, Music, Image, X, Plus, FolderOpen } from 'lucide-react';
+import { Film, Music, Image, X, Plus, FolderOpen, PlusCircle } from 'lucide-react';
 import { useCallback, useState, useRef } from 'react';
 import type { MediaFile } from '../types';
 import { importFiles } from '../lib/media-utils';
 import { t, useLang } from '../lib/i18n';
+import { useMobileLayout } from '../lib/use-mobile';
 
 interface MediaPanelProps {
   onImport?: () => void;
+  mobile?: boolean;
 }
 
-export default function MediaPanel({ onImport }: MediaPanelProps) {
+export default function MediaPanel({ onImport, mobile }: MediaPanelProps) {
   const media = useEditorStore((s) => s.media);
   const addMedia = useEditorStore((s) => s.addMedia);
   const removeMedia = useEditorStore((s) => s.removeMedia);
@@ -21,6 +23,7 @@ export default function MediaPanel({ onImport }: MediaPanelProps) {
   const tracks = useEditorStore((s) => s.tracks);
   const clips = useEditorStore((s) => s.clips);
   useLang(); // re-render on language change
+  const { isMobile } = useMobileLayout();
 
   const [filter, setFilter] = useState<'all' | 'video' | 'audio' | 'image'>('all');
 
@@ -41,19 +44,27 @@ export default function MediaPanel({ onImport }: MediaPanelProps) {
   const quickAddToTimeline = useCallback(
     (m: MediaFile) => {
       const kind = m.type === 'audio' ? 'audio' : 'video';
-      const track = tracks.find((t) => t.kind === kind);
-      if (!track) return;
+      const matchingTracks = tracks.filter((t) => t.kind === kind);
+      if (matchingTracks.length === 0) return;
 
-      const existingOnTrack = clips
-        .filter((c) => c.trackId === track.id)
-        .sort((a, b) => (a.startOnTimeline + a.duration) - (b.startOnTimeline + b.duration));
+      // Pick the track whose last clip ends earliest (spreads clips across tracks)
+      let bestTrack = matchingTracks[0];
+      let bestEnd = Infinity;
+      for (const trk of matchingTracks) {
+        const trackClips = clips.filter((c) => c.trackId === trk.id);
+        const endTime = trackClips.length > 0
+          ? Math.max(...trackClips.map((c) => c.startOnTimeline + c.duration))
+          : 0;
+        if (endTime < bestEnd) {
+          bestEnd = endTime;
+          bestTrack = trk;
+        }
+      }
 
-      const startAt = existingOnTrack.length > 0
-        ? existingOnTrack[existingOnTrack.length - 1].startOnTimeline + existingOnTrack[existingOnTrack.length - 1].duration
-        : 0;
+      const startAt = bestEnd === Infinity ? 0 : bestEnd;
 
       addClip({
-        trackId: track.id, mediaId: m.id, startOnTimeline: startAt,
+        trackId: bestTrack.id, mediaId: m.id, startOnTimeline: startAt,
         duration: m.duration, sourceStart: 0, sourceEnd: m.duration,
         speed: 1, volume: 1, fadeIn: 0, fadeOut: 0,
       });
@@ -75,7 +86,7 @@ export default function MediaPanel({ onImport }: MediaPanelProps) {
   const filtered = filter === 'all' ? media : media.filter((m) => m.type === filter);
 
   return (
-    <aside className="w-56 xl:w-64 flex-shrink-0 flex flex-col border-r border-white/5 bg-surface-50">
+    <aside className={mobile ? 'flex flex-col h-full bg-surface-50' : 'w-56 xl:w-64 flex-shrink-0 flex flex-col border-r border-white/5 bg-surface-50'}>
       <div className="px-3 py-2 flex items-center justify-between border-b border-white/5">
         <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t('mediaLibrary')}</span>
         <button onClick={handleImport} className="p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors" title={t('importFiles')}>
@@ -105,10 +116,10 @@ export default function MediaPanel({ onImport }: MediaPanelProps) {
           </button>
         ) : (
           filtered.map((m) => (
-            <div key={m.id} draggable onDragStart={(e) => onDragStart(e, m)}
+            <div key={m.id} draggable={!isMobile} onDragStart={(e) => onDragStart(e, m)}
               onDoubleClick={() => quickAddToTimeline(m)}
               className="group flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 cursor-grab active:cursor-grabbing transition-colors"
-              title={`${m.name}\n${t('doubleClickHint')}`}>
+              title={isMobile ? undefined : `${m.name}\n${t('doubleClickHint')}`}>
               <div className="w-12 h-8 rounded bg-surface-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
                 {m.thumbnail ? (
                   <img src={m.thumbnail} alt="" className="w-full h-full object-cover" />
@@ -123,8 +134,19 @@ export default function MediaPanel({ onImport }: MediaPanelProps) {
                   <span className="text-[10px] text-gray-500">{fmtTime(m.duration)}</span>
                 </div>
               </div>
+              {isMobile && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); quickAddToTimeline(m); }}
+                  className="p-1.5 text-accent-light hover:text-white hover:bg-accent/20 rounded-lg transition-colors flex-shrink-0"
+                  title={t('tapToAdd')}
+                  style={{ minHeight: 'auto', minWidth: 'auto' }}
+                >
+                  <PlusCircle size={18} />
+                </button>
+              )}
               <button onClick={(e) => { e.stopPropagation(); removeMedia(m.id); }}
-                className="p-0.5 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all" title={t('removeMedia')}>
+                className="p-0.5 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0" title={t('removeMedia')}
+                style={isMobile ? { opacity: 1 } : undefined}>
                 <X size={12} />
               </button>
             </div>

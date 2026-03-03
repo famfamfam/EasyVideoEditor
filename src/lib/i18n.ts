@@ -28,6 +28,14 @@ const translations = {
     statsAudio: 'аудио',
     secSuffix: 'с',
 
+    // ── Mobile Tabs ─────────────────────────────────────
+    tabMedia: 'Медиа',
+    tabPreview: 'Превью',
+    tabProperties: 'Свойства',
+    collapseTimeline: 'Свернуть таймлайн',
+    expandTimeline: 'Развернуть таймлайн',
+    tapToAdd: 'Нажмите + чтобы добавить на таймлайн',
+
     // ── Media Panel ──────────────────────────────────────
     mediaLibrary: 'Медиатека',
     importFiles: 'Импортировать файлы',
@@ -238,6 +246,14 @@ const translations = {
     statsVideo: 'video',
     statsAudio: 'audio',
     secSuffix: 's',
+
+    // ── Mobile Tabs ─────────────────────────────────────
+    tabMedia: 'Media',
+    tabPreview: 'Preview',
+    tabProperties: 'Properties',
+    collapseTimeline: 'Collapse timeline',
+    expandTimeline: 'Expand timeline',
+    tapToAdd: 'Tap + to add to timeline',
 
     // ── Media Panel ──────────────────────────────────────
     mediaLibrary: 'Media Library',
