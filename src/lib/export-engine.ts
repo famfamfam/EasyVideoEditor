@@ -13,6 +13,7 @@
  * multi-pass strategy — process each clip individually, then combine.
  */
 import { getFFmpeg, resetFFmpeg, type ProgressCallback } from './ffmpeg';
+import { getLanguage, t } from './i18n';
 import type { Clip, TextItem, Track, Transition, ExportSettings, ClipEffects } from '../types';
 
 export interface ExportInput {
@@ -37,71 +38,204 @@ function deleteFile(ffmpeg: Awaited<ReturnType<typeof getFFmpeg>>, name: string)
   try { ffmpeg.deleteFile(name); } catch { /* ok */ }
 }
 
-const FONT_REGULAR = 'font_regular.ttf';
-const FONT_BOLD = 'font_bold.ttf';
+/**
+ * Map from CSS fontFamily value → Google Fonts CDN URL for a regular and bold TTF.
+ * FFmpeg.wasm has no fontconfig / system fonts, so we must download the actual .ttf.
+ * For generic families (sans-serif, serif, monospace) and system fonts not on Google Fonts,
+ * we use Noto Sans / Noto Serif / Noto Sans Mono as substitutes.
+ */
+// Font URLs sourced from Google Fonts API (fonts.gstatic.com) — verified working TTF direct links.
+const FONT_MAP: Record<string, { regular: string; bold: string }> = {
+  // ── Generic families ───────────────────────────────────────
+  'sans-serif': {
+    regular: 'https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A99d.ttf',
+    bold:    'https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyAaBN9d.ttf',
+  },
+  'serif': {
+    regular: 'https://fonts.gstatic.com/s/notoserif/v33/ga6iaw1J5X9T9RW6j9bNVls-hfgvz8JcMofYTa32J4wsL2JAlAhZqFCjwA.ttf',
+    bold:    'https://fonts.gstatic.com/s/notoserif/v33/ga6iaw1J5X9T9RW6j9bNVls-hfgvz8JcMofYTa32J4wsL2JAlAhZT1ejwA.ttf',
+  },
+  'monospace': {
+    regular: 'https://fonts.gstatic.com/s/notosansmono/v37/BngrUXNETWXI6LwhGYvaxZikqZqK6fBq6kPvUce2oAZcdthSBUsYck4-_FNJ49o.ttf',
+    bold:    'https://fonts.gstatic.com/s/notosansmono/v37/BngrUXNETWXI6LwhGYvaxZikqZqK6fBq6kPvUce2oAZcdthSBUsYck4-_LRO49o.ttf',
+  },
+  // ── System font aliases (mapped to closest Google Fonts) ───
+  'Arial': {
+    regular: 'https://fonts.gstatic.com/s/arimo/v35/P5sfzZCDf9_T_3cV7NCUECyoxNk37cxsBw.ttf',
+    bold:    'https://fonts.gstatic.com/s/arimo/v35/P5sfzZCDf9_T_3cV7NCUECyoxNk3CstsBw.ttf',
+  },
+  'Helvetica': {
+    regular: 'https://fonts.gstatic.com/s/arimo/v35/P5sfzZCDf9_T_3cV7NCUECyoxNk37cxsBw.ttf',
+    bold:    'https://fonts.gstatic.com/s/arimo/v35/P5sfzZCDf9_T_3cV7NCUECyoxNk3CstsBw.ttf',
+  },
+  'Impact': {
+    regular: 'https://fonts.gstatic.com/s/oswald/v57/TK3_WkUHHAIjg75cFRf3bXL8LICs1_FvgUE.ttf',
+    bold:    'https://fonts.gstatic.com/s/oswald/v57/TK3_WkUHHAIjg75cFRf3bXL8LICs1xZogUE.ttf',
+  },
+  'Georgia': {
+    regular: 'https://fonts.gstatic.com/s/tinos/v25/buE4poGnedXvwgX8.ttf',
+    bold:    'https://fonts.gstatic.com/s/tinos/v25/buE1poGnedXvwj1AW0Fp.ttf',
+  },
+  'Times New Roman': {
+    regular: 'https://fonts.gstatic.com/s/tinos/v25/buE4poGnedXvwgX8.ttf',
+    bold:    'https://fonts.gstatic.com/s/tinos/v25/buE1poGnedXvwj1AW0Fp.ttf',
+  },
+  'Verdana': {
+    regular: 'https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsjZ0C4n.ttf',
+    bold:    'https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsg-1y4n.ttf',
+  },
+  'Trebuchet MS': {
+    regular: 'https://fonts.gstatic.com/s/firasans/v18/va9E4kDNxMZdWfMOD5VfkA.ttf',
+    bold:    'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnLK3uQQ.ttf',
+  },
+  'Courier New': {
+    regular: 'https://fonts.gstatic.com/s/cousine/v29/d6lIkaiiRdih4SpPzSM.ttf',
+    bold:    'https://fonts.gstatic.com/s/cousine/v29/d6lNkaiiRdih4SpP9Z8K6T4.ttf',
+  },
+  // ── Google Fonts ───────────────────────────────────────────
+  'Roboto': {
+    regular: 'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbWmT.ttf',
+    bold:    'https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYjammT.ttf',
+  },
+  'Open Sans': {
+    regular: 'https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsjZ0C4n.ttf',
+    bold:    'https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsg-1y4n.ttf',
+  },
+  'Montserrat': {
+    regular: 'https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Ew-.ttf',
+    bold:    'https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCuM70w-.ttf',
+  },
+  'Oswald': {
+    regular: 'https://fonts.gstatic.com/s/oswald/v57/TK3_WkUHHAIjg75cFRf3bXL8LICs1_FvgUE.ttf',
+    bold:    'https://fonts.gstatic.com/s/oswald/v57/TK3_WkUHHAIjg75cFRf3bXL8LICs1xZogUE.ttf',
+  },
+  'Comic Sans MS': {
+    regular: 'https://fonts.gstatic.com/s/comicneue/v9/4UaHrEJDsxBrF37olUeDx60.ttf',
+    bold:    'https://fonts.gstatic.com/s/comicneue/v9/4UaErEJDsxBrF37olUeD_xHMwps.ttf',
+  },
+  'Arimo': {
+    regular: 'https://fonts.gstatic.com/s/arimo/v35/P5sfzZCDf9_T_3cV7NCUECyoxNk37cxsBw.ttf',
+    bold:    'https://fonts.gstatic.com/s/arimo/v35/P5sfzZCDf9_T_3cV7NCUECyoxNk3CstsBw.ttf',
+  },
+  'Tinos': {
+    regular: 'https://fonts.gstatic.com/s/tinos/v25/buE4poGnedXvwgX8.ttf',
+    bold:    'https://fonts.gstatic.com/s/tinos/v25/buE1poGnedXvwj1AW0Fp.ttf',
+  },
+  'Cousine': {
+    regular: 'https://fonts.gstatic.com/s/cousine/v29/d6lIkaiiRdih4SpPzSM.ttf',
+    bold:    'https://fonts.gstatic.com/s/cousine/v29/d6lNkaiiRdih4SpP9Z8K6T4.ttf',
+  },
+  'Fira Sans': {
+    regular: 'https://fonts.gstatic.com/s/firasans/v18/va9E4kDNxMZdWfMOD5VfkA.ttf',
+    bold:    'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnLK3uQQ.ttf',
+  },
+  'Comic Neue': {
+    regular: 'https://fonts.gstatic.com/s/comicneue/v9/4UaHrEJDsxBrF37olUeDx60.ttf',
+    bold:    'https://fonts.gstatic.com/s/comicneue/v9/4UaErEJDsxBrF37olUeD_xHMwps.ttf',
+  },
+};
 
-const FONT_SOURCES: { file: string; urls: string[] }[] = [
-  {
-    file: FONT_REGULAR,
-    urls: [
-      'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/NotoSans-Regular.ttf',
-      'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts/unhinted/ttf/NotoSans/NotoSans-Regular.ttf',
-      'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/unhinted/ttf/NotoSans/NotoSans-Regular.ttf',
-    ],
-  },
-  {
-    file: FONT_BOLD,
-    urls: [
-      'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/NotoSans-Bold.ttf',
-      'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts/unhinted/ttf/NotoSans/NotoSans-Bold.ttf',
-      'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/unhinted/ttf/NotoSans/NotoSans-Bold.ttf',
-    ],
-  },
-];
+/** Extract the primary font name from a CSS fontFamily like "'Comic Sans MS', cursive" */
+function parseFontName(cssFamily: string): string {
+  // Take the first family, strip quotes
+  const first = cssFamily.split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+  return first;
+}
+
+/** Validate that data looks like a real font (TTF/OTF/WOFF) */
+function isFontData(data: Uint8Array): boolean {
+  if (data.byteLength < 5000) return false;
+  const sig = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
+  return sig === 0x00010000 || sig === 0x74727565 || sig === 0x4F54544F || sig === 0x774F4646;
+}
 
 const _fontCaches: Record<string, Uint8Array> = {};
 
-async function fetchFontToFS(ffmpeg: Awaited<ReturnType<typeof getFFmpeg>>, filename: string, urls: string[]): Promise<boolean> {
-  // Check if already written
+/** Download a single font file and write it to FFmpeg FS. Returns true if successful. */
+async function fetchAndWriteFont(
+  ffmpeg: Awaited<ReturnType<typeof getFFmpeg>>,
+  filename: string,
+  url: string,
+): Promise<boolean> {
+  // Already in FS?
   try {
     const existing = await ffmpeg.readFile(filename);
-    if (existing instanceof Uint8Array && existing.byteLength > 1000) return true;
-  } catch { /* not yet written */ }
+    if (existing instanceof Uint8Array && existing.byteLength > 5000) return true;
+  } catch { /* not written yet */ }
 
-  // Use cached font data if available
-  if (_fontCaches[filename]) {
+  // Cached in memory?
+  if (_fontCaches[filename] && isFontData(_fontCaches[filename])) {
     await ffmpeg.writeFile(filename, _fontCaches[filename]);
     return true;
   }
 
-  // Try fetching from CDN
-  for (const url of urls) {
-    try {
-      console.log(`[export] Fetching font ${filename} from ${url}…`);
-      const resp = await fetch(url);
-      if (!resp.ok) continue;
-      const buf = await resp.arrayBuffer();
-      if (buf.byteLength < 1000) continue;
-      _fontCaches[filename] = new Uint8Array(buf);
-      await ffmpeg.writeFile(filename, _fontCaches[filename]);
-      console.log(`[export] Font ${filename} loaded (${(buf.byteLength / 1024).toFixed(0)} KB)`);
-      return true;
-    } catch (e) {
-      console.warn(`[export] Font fetch failed:`, e);
+  try {
+    console.log(`[export] Fetching font ${filename} from ${url}…`);
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      console.warn(`[export] Font URL returned ${resp.status}: ${url}`);
+      return false;
     }
+    const buf = await resp.arrayBuffer();
+    const data = new Uint8Array(buf);
+    if (!isFontData(data)) {
+      console.warn(`[export] Not a valid font from ${url} (${buf.byteLength} bytes)`);
+      return false;
+    }
+    _fontCaches[filename] = data;
+    await ffmpeg.writeFile(filename, data);
+    console.log(`[export] Font ${filename} loaded (${(buf.byteLength / 1024).toFixed(0)} KB)`);
+    return true;
+  } catch (e) {
+    console.warn(`[export] Font fetch failed for ${url}:`, e);
+    return false;
   }
-  return false;
 }
 
-async function ensureFontsInFS(ffmpeg: Awaited<ReturnType<typeof getFFmpeg>>): Promise<boolean> {
-  const results = await Promise.all(
-    FONT_SOURCES.map((s) => fetchFontToFS(ffmpeg, s.file, s.urls))
-  );
-  return results.some(Boolean); // at least one font loaded
-}
+/**
+ * Ensure the correct font for a TextItem is available in FFmpeg FS.
+ * Returns the filename to use in fontfile=, or '' if no font available.
+ */
+async function ensureFontForText(
+  ffmpeg: Awaited<ReturnType<typeof getFFmpeg>>,
+  fontFamily: string,
+  fontWeight: number,
+): Promise<string> {
+  const fontName = parseFontName(fontFamily);
+  const isBold = fontWeight >= 600;
+  const variant = isBold ? 'bold' : 'regular';
+  const fsFilename = `font_${fontName.replace(/\s+/g, '_').toLowerCase()}_${variant}.ttf`;
 
-function fontFileForWeight(weight: number): string {
-  return weight >= 600 ? FONT_BOLD : FONT_REGULAR;
+  // Check if already in FS
+  try {
+    const existing = await ffmpeg.readFile(fsFilename);
+    if (existing instanceof Uint8Array && existing.byteLength > 5000) return fsFilename;
+  } catch { /* not written yet */ }
+
+  // Look up the URL for this font
+  const entry = FONT_MAP[fontName];
+  if (entry) {
+    const url = isBold ? entry.bold : entry.regular;
+    const ok = await fetchAndWriteFont(ffmpeg, fsFilename, url);
+    if (ok) return fsFilename;
+  }
+
+  // Fallback: try the generic family
+  const genericName = fontFamily.includes('serif') && !fontFamily.includes('sans')
+    ? 'serif'
+    : fontFamily.includes('monospace') || fontFamily.includes('Courier')
+      ? 'monospace'
+      : 'sans-serif';
+  const fallbackEntry = FONT_MAP[genericName];
+  if (fallbackEntry) {
+    const url = isBold ? fallbackEntry.bold : fallbackEntry.regular;
+    const fallbackFile = `font_${genericName.replace('-', '')}_${variant}.ttf`;
+    const ok = await fetchAndWriteFont(ffmpeg, fallbackFile, url);
+    if (ok) return fallbackFile;
+  }
+
+  console.warn(`[export] Could not load any font for "${fontFamily}" (weight=${fontWeight})`);
+  return '';
 }
 
 /** Build the -vf string from ClipEffects */
@@ -139,7 +273,20 @@ function drawtextFilter(t: TextItem, w: number, h: number): string {
   if (t.fontFamily) parts.push(`font='${esc(t.fontFamily)}'`);
   if (t.strokeWidth > 0) parts.push(`borderw=${t.strokeWidth ?? 0}`, `bordercolor=${t.strokeColor ?? 'black'}`);
   if (t.shadowBlur) parts.push(`shadowx=2`, `shadowy=2`, `shadowcolor=${t.shadowColor ?? 'black'}`);
-  if (t.backgroundColor) parts.push(`box=1`, `boxcolor=${t.backgroundColor}@0.6`, `boxborderw=8`);
+  if (t.backgroundColor) {
+    // Parse backgroundColor to extract alpha. Use full opacity by default (matching preview).
+    const bgColor = t.backgroundColor;
+    // If it's a hex color like #RRGGBB, use @1.0 (fully opaque).
+    // If it's rgba(...), extract the alpha value.
+    let boxAlpha = '1.0';
+    const rgbaMatch = bgColor.match(/rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*([\d.]+)\s*)?\)/i);
+    if (rgbaMatch && rgbaMatch[1] !== undefined) {
+      boxAlpha = parseFloat(rgbaMatch[1]).toFixed(2);
+    }
+    // boxborderw provides the padding around the text (matches preview padding = fontSize * 0.4)
+    const boxPad = Math.max(8, Math.round(t.fontSize * 0.4));
+    parts.push(`box=1`, `boxcolor=${bgColor}@${boxAlpha}`, `boxborderw=${boxPad}`);
+  }
 
   // fade alpha
   if (t.fadeIn > 0 || t.fadeOut > 0) {
@@ -258,25 +405,32 @@ async function concatTwoClips(
 
 export async function exportProject(input: ExportInput, onProgress?: ProgressCallback): Promise<Blob> {
   const { clips, textItems, tracks, transitions, settings, media } = input;
-  if (clips.length === 0 && textItems.length === 0) throw new Error('Нет клипов для экспорта');
+
+  // Snapshot the language at export-start so all progress messages use the same language.
+  // Using a local alias avoids conflicts with loop variables named 't'.
+  const lang = getLanguage();
+  const tr = (key: Parameters<typeof t>[0]) => t(key);
+  void lang; // lang is captured in the closure via getLanguage at call time
+
+  if (clips.length === 0 && textItems.length === 0) throw new Error(tr('exportNoClips'));
 
   console.log(`[export] exportProject START: clips=${clips.length} tracks=${tracks.length} media=${media.length}`);
   clips.forEach((c, i) => console.log(`  inputClip[${i}] id=${c.id} trackId=${c.trackId} mediaId=${c.mediaId} start=${c.startOnTimeline.toFixed(2)} dur=${c.duration.toFixed(2)} opacity=${c.effects?.opacity}`));
   tracks.forEach((t, i) => console.log(`  track[${i}] id=${t.id} kind=${t.kind} name=${t.name}`));
   media.forEach((m, i) => console.log(`  media[${i}] id=${m.id} type=${m.type} name=${(m as any).name}`));
 
-  onProgress?.(0, 'Запуск видео-движка…');
+  onProgress?.(0, tr('exportStarting'));
   const ffmpeg = await getFFmpeg(onProgress);
   const { width, height, fps } = settings;
 
   /* ── Sort clips by track, then by timeline position ── */
-  const videoTracks = tracks.filter((t) => t.kind === 'video');
-  const audioTracks = tracks.filter((t) => t.kind === 'audio');
+  const videoTracks = tracks.filter((tr_) => tr_.kind === 'video');
+  const audioTracks = tracks.filter((tr_) => tr_.kind === 'audio');
   const sortedVideoClips = clips
-    .filter((c) => videoTracks.some((t) => t.id === c.trackId))
+    .filter((c) => videoTracks.some((tr_) => tr_.id === c.trackId))
     .sort((a, b) => a.startOnTimeline - b.startOnTimeline);
   const sortedAudioClips = clips
-    .filter((c) => audioTracks.some((t) => t.id === c.trackId))
+    .filter((c) => audioTracks.some((tr_) => tr_.id === c.trackId))
     .sort((a, b) => a.startOnTimeline - b.startOnTimeline);
   const allClips = [...sortedVideoClips, ...sortedAudioClips];
 
@@ -312,7 +466,7 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
     }
     const isAudio = track.kind === 'audio' || mf.type === 'audio';
 
-    progress(`Обработка ${isAudio ? 'аудио' : 'видео'} ${i + 1}/${allClips.length}…`);
+    progress(`${isAudio ? tr('exportProcessingAudio') : tr('exportProcessingVideo')} ${i + 1}/${allClips.length}…`);
 
     // Determine proper file extension for the input
     const isImage = mf.type === 'image';
@@ -500,7 +654,7 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
   }
 
   /* ── 2. Combine video clips on the timeline ────────── */
-  progress('Компоновка видео…');
+  progress(tr('exportCompositing'));
 
   let videoResult = `blank.mp4`;
   // Compute totalDur from actual processed file lengths to avoid black tail.
@@ -765,17 +919,25 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
 
   /* ── 3. Burn text overlays via drawtext ────────────── */
   if (textItems.length > 0) {
-    progress('Загрузка шрифтов…');
-    const hasFont = await ensureFontsInFS(ffmpeg);
+    progress(tr('exportLoadingFonts'));
 
-    progress('Наложение текста…');
+    // Pre-download all needed fonts
+    const fontFileMap = new Map<string, string>(); // "fontFamily|fontWeight" → filename in FS
+    for (const ti of textItems) {
+      const key = `${ti.fontFamily}|${ti.fontWeight}`;
+      if (fontFileMap.has(key)) continue;
+      const fontFile = await ensureFontForText(ffmpeg, ti.fontFamily, ti.fontWeight);
+      fontFileMap.set(key, fontFile);
+    }
+
+    progress(tr('exportBurningText'));
 
     // Apply drawtext filters one at a time for better compatibility
     let txtCurrent = videoResult;
     let txtSuccess = false;
 
     for (let ti = 0; ti < textItems.length; ti++) {
-      const t = textItems[ti];
+      const item = textItems[ti];
       const txtOutput = `text_${ti}.mp4`;
 
       // FFmpeg.wasm receives the filter string directly (no shell).
@@ -786,56 +948,62 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
         .replace(/:/g, '\\:')
         .replace(/%/g, '%%');
 
-      const x = Math.round(t.x * width);
-      const y = Math.round(t.y * height);
-      const textContent = t.text.replace(/\n/g, ' ');  // drawtext doesn't handle \n well
-      const fontFile = fontFileForWeight(t.fontWeight);
+      const x = Math.round(item.x * width);
+      const y = Math.round(item.y * height);
+      const textContent = item.text.replace(/\n/g, ' ');  // drawtext doesn't handle \n well
+      const fontKey = `${item.fontFamily}|${item.fontWeight}`;
+      const fontFile = fontFileMap.get(fontKey) ?? '';
 
       const parts: string[] = [];
-      if (hasFont) parts.push(`fontfile=${fontFile}`);
+      if (fontFile) parts.push(`fontfile=${fontFile}`);
       parts.push(
         `text='${escDrawtext(textContent)}'`,
-        `fontsize=${t.fontSize}`,
-        `fontcolor=${t.color}`,
+        `fontsize=${item.fontSize}`,
+        `fontcolor=${item.color}`,
         `x=${x}-tw/2`,
         `y=${y}-th/2`,
       );
 
-      if (t.strokeWidth > 0) parts.push(`borderw=${t.strokeWidth}`, `bordercolor=${t.strokeColor ?? 'black'}`);
-      if (t.shadowBlur > 0) parts.push(`shadowx=2`, `shadowy=2`, `shadowcolor=${t.shadowColor ?? 'black'}`);
-      if (t.backgroundColor) parts.push(`box=1`, `boxcolor=${t.backgroundColor}@0.6`, `boxborderw=8`);
+      if (item.strokeWidth > 0) parts.push(`borderw=${item.strokeWidth}`, `bordercolor=${item.strokeColor ?? 'black'}`);
+      if (item.shadowBlur > 0) parts.push(`shadowx=2`, `shadowy=2`, `shadowcolor=${item.shadowColor ?? 'black'}`);
+      if (item.backgroundColor) {
+        const bgColor = item.backgroundColor;
+        let boxAlpha = '1.0';
+        const rgbaMatch = bgColor.match(/rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*([\d.]+)\s*)?\)/i);
+        if (rgbaMatch && rgbaMatch[1] !== undefined) {
+          boxAlpha = parseFloat(rgbaMatch[1]).toFixed(2);
+        }
+        const boxPad = Math.max(8, Math.round(item.fontSize * 0.4));
+        parts.push(`box=1`, `boxcolor=${bgColor}@${boxAlpha}`, `boxborderw=${boxPad}`);
+      }
 
       // Fade in/out alpha expression using absolute time
-      // drawtext 'alpha' supports expressions; commas in expressions must NOT be escaped
-      if (t.fadeIn > 0 || t.fadeOut > 0) {
-        const tStart = t.startOnTimeline;
-        const tEnd = t.startOnTimeline + t.duration;
-        // Build alpha expression pieces
+      if (item.fadeIn > 0 || item.fadeOut > 0) {
+        const tStart = item.startOnTimeline;
+        const tEnd = item.startOnTimeline + item.duration;
         let alphaExpr = '1';
-        if (t.fadeIn > 0) {
-          // ramp from 0 to 1 during [tStart, tStart+fadeIn]
-          alphaExpr = `if(lt(t,${(tStart + t.fadeIn).toFixed(3)}),(t-${tStart.toFixed(3)})/${t.fadeIn.toFixed(3)},1)`;
+        if (item.fadeIn > 0) {
+          alphaExpr = `if(lt(t,${(tStart + item.fadeIn).toFixed(3)}),(t-${tStart.toFixed(3)})/${item.fadeIn.toFixed(3)},1)`;
         }
-        if (t.fadeOut > 0) {
-          const fadeOutStart = (tEnd - t.fadeOut).toFixed(3);
-          const fadeOutExpr = `if(gt(t,${fadeOutStart}),(${tEnd.toFixed(3)}-t)/${t.fadeOut.toFixed(3)},1)`;
-          if (t.fadeIn > 0) {
+        if (item.fadeOut > 0) {
+          const fadeOutStart = (tEnd - item.fadeOut).toFixed(3);
+          const fadeOutExpr = `if(gt(t,${fadeOutStart}),(${tEnd.toFixed(3)}-t)/${item.fadeOut.toFixed(3)},1)`;
+          if (item.fadeIn > 0) {
             alphaExpr = `min(${alphaExpr},${fadeOutExpr})`;
           } else {
             alphaExpr = fadeOutExpr;
           }
         }
-        // Multiply by general opacity
-        if (t.opacity < 1) {
-          alphaExpr = `(${alphaExpr})*${t.opacity.toFixed(2)}`;
+        if (item.opacity < 1) {
+          alphaExpr = `(${alphaExpr})*${item.opacity.toFixed(2)}`;
         }
         parts.push(`alpha='${alphaExpr}'`);
-      } else if (t.opacity < 1) {
-        parts.push(`alpha=${t.opacity.toFixed(2)}`);
+      } else if (item.opacity < 1) {
+        parts.push(`alpha=${item.opacity.toFixed(2)}`);
       }
 
       // enable window at absolute time
-      parts.push(`enable='between(t,${t.startOnTimeline.toFixed(3)},${(t.startOnTimeline + t.duration).toFixed(3)})'`);
+      parts.push(`enable='between(t,${item.startOnTimeline.toFixed(3)},${(item.startOnTimeline + item.duration).toFixed(3)})'`);
 
       const vfStr = `drawtext=${parts.join(':')}`;
       console.log(`[export] drawtext filter for item ${ti}:`, vfStr);
@@ -854,11 +1022,11 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
         // Retry without alpha, enable — simplest possible drawtext
         console.warn(`[export] drawtext failed for item ${ti}, retrying simplified...`);
         const simpleParts: string[] = [];
-        if (hasFont) simpleParts.push(`fontfile=${fontFile}`);
+        if (fontFile) simpleParts.push(`fontfile=${fontFile}`);
         simpleParts.push(
           `text='${escDrawtext(textContent)}'`,
-          `fontsize=${t.fontSize}`,
-          `fontcolor=${t.color}`,
+          `fontsize=${item.fontSize}`,
+          `fontcolor=${item.color}`,
           `x=${x}-tw/2`,
           `y=${y}-th/2`,
         );
@@ -891,7 +1059,7 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
 
   /* ── 4. Mix in audio tracks ────────────────────────── */
   if (processedAudio.length > 0) {
-    progress('Микширование аудио…');
+    progress(tr('exportMixingAudio'));
     const audioMixInput = videoResult;
     const audioMixOutput = 'amix_out.mp4';
 
@@ -943,7 +1111,7 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
   }
 
   /* ── 5. Read final result ──────────────────────────── */
-  progress('Завершение…');
+  progress(tr('exportFinalizing'));
   const data = await ffmpeg.readFile(videoResult);
   deleteFile(ffmpeg, videoResult);
 
@@ -956,7 +1124,7 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
     blobData = new TextEncoder().encode(data as string).buffer as ArrayBuffer;
   }
 
-  onProgress?.(100, 'Готово!');
+  onProgress?.(100, tr('exportComplete'));
   // Reset the FFmpeg instance — after Aborted() the WASM runtime is dead,
   // the next export must create a fresh instance.
   resetFFmpeg();

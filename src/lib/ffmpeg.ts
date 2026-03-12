@@ -5,6 +5,7 @@
  */
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { toBlobURL } from '@ffmpeg/util';
+import { t } from './i18n';
 
 let ffmpegInstance: FFmpeg | null = null;
 let loadPromise: Promise<FFmpeg> | null = null;
@@ -47,11 +48,11 @@ export async function getFFmpeg(onProgress?: ProgressCallback): Promise<FFmpeg> 
 
     ffmpeg.on('progress', ({ progress }) => {
       if (progress >= 0 && progress <= 1) {
-        onProgress?.(Math.round(progress * 100), 'Обработка видео...');
+        onProgress?.(Math.round(progress * 100), t('exportProcessingVideo'));
       }
     });
 
-    onProgress?.(5, 'Загрузка видео-движка...');
+    onProgress?.(5, t('ffmpegLoading'));
 
     const sources = [
       { base: `${window.location.origin}/ffmpeg`, label: 'local' },
@@ -64,11 +65,11 @@ export async function getFFmpeg(onProgress?: ProgressCallback): Promise<FFmpeg> 
     for (const { base: baseURL, label } of sources) {
       const isLocal = label === 'local';
       try {
-        onProgress?.(10, isLocal ? 'Загрузка видео-движка...' : `Загрузка с ${label}...`);
+        onProgress?.(10, isLocal ? t('ffmpegLoading') : `${t('ffmpegLoadingCdn')} ${label}…`);
         const coreURL = await toDataURL(`${baseURL}/ffmpeg-core.js`);
-        onProgress?.(40, 'Загрузка WASM (~30 МБ)...');
+        onProgress?.(40, t('ffmpegLoadingWasm'));
         const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
-        onProgress?.(75, 'Инициализация...');
+        onProgress?.(75, t('ffmpegInitializing'));
 
         await withTimeout(
           ffmpeg.load({ coreURL, wasmURL }),
@@ -89,7 +90,7 @@ export async function getFFmpeg(onProgress?: ProgressCallback): Promise<FFmpeg> 
     }
 
     ffmpegInstance = ffmpeg;
-    onProgress?.(100, 'Видео-движок готов');
+    onProgress?.(100, t('ffmpegReady'));
     return ffmpeg;
   })();
 
@@ -142,9 +143,9 @@ export async function mergeClips(
 ): Promise<Blob> {
   if (clips.length === 0) throw new Error('Нет клипов для склейки');
 
-  onProgress?.(0, 'Запуск видео-движка...');
+  onProgress?.(0, t('exportStarting'));
   const ffmpeg = await getFFmpeg(onProgress);
-  onProgress?.(0, 'Подготовка клипов...');
+  onProgress?.(0, t('ffmpegPreparingClips'));
 
   const processedFiles: string[] = [];
 
@@ -154,7 +155,7 @@ export async function mergeClips(
     const outputFile = `clip_${i}.mp4`;
     const baseProgress = Math.round((i / clips.length) * 60);
 
-    onProgress?.(baseProgress, `Загрузка клипа ${i + 1} из ${clips.length}...`);
+    onProgress?.(baseProgress, `${t('ffmpegLoadingClip')} ${i + 1} ${t('ffmpegOf')} ${clips.length}…`);
 
     try {
       await writeVideoToFS(ffmpeg, clip.url, inputFile);
@@ -162,7 +163,7 @@ export async function mergeClips(
       throw new Error(`Не удалось загрузить клип ${i + 1}. Проверьте файл.`);
     }
 
-    onProgress?.(baseProgress + 5, `Обработка клипа ${i + 1} из ${clips.length}...`);
+    onProgress?.(baseProgress + 5, `${t('ffmpegProcessingClip')} ${i + 1} ${t('ffmpegOf')} ${clips.length}…`);
 
     const needsTrim = clip.trim && (clip.trim.startTime > 0.05 || clip.trim.endTime < Infinity);
     const args: string[] = [];
@@ -239,7 +240,7 @@ export async function mergeClips(
     processedFiles.push(outputFile);
   }
 
-  onProgress?.(65, 'Склеиваю клипы...');
+  onProgress?.(65, t('ffmpegMergingClips'));
 
   let resultFile: string;
   const hasTransitions = clips.some((c, i) => i < clips.length - 1 && c.transition && c.transition !== 'none');
@@ -360,7 +361,7 @@ export async function mergeClips(
   const fadeOut = options?.fadeOutDuration ?? 0;
 
   if (fadeIn > 0 || fadeOut > 0) {
-    onProgress?.(85, 'Применяю fade эффекты...');
+    onProgress?.(85, t('ffmpegApplyingFade'));
     const fadeInputFile = resultFile;
     const fadeOutputFile = 'faded_output.mp4';
 
@@ -436,7 +437,7 @@ export async function mergeClips(
     }
   }
 
-  onProgress?.(90, 'Формирую результат...');
+  onProgress?.(90, t('ffmpegFinalizingResult'));
 
   const data = await ffmpeg.readFile(resultFile);
   try { await ffmpeg.deleteFile(resultFile); } catch { /* ok */ }
@@ -450,6 +451,6 @@ export async function mergeClips(
     blobData = new TextEncoder().encode(data as string).buffer as ArrayBuffer;
   }
 
-  onProgress?.(100, 'Готово!');
+  onProgress?.(100, t('exportComplete'));
   return new Blob([blobData], { type: 'video/mp4' });
 }

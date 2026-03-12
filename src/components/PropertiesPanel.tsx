@@ -317,15 +317,24 @@ function TextProperties({ text, updateTextItem, mobile }: { text: TextItem; upda
           <Row label={t('rowFontFamily')}>
             <select value={text.fontFamily} onChange={(e) => update({ fontFamily: e.target.value })}
               className="w-full bg-surface border border-white/10 rounded px-2 py-1 text-gray-200 focus:border-accent/60 outline-none">
-              <option value="sans-serif">Sans Serif</option>
-              <option value="serif">Serif</option>
-              <option value="monospace">Monospace</option>
-              <option value="'Arial', sans-serif">Arial</option>
-              <option value="'Impact', sans-serif">Impact</option>
+              <option value="sans-serif">Sans Serif (Noto Sans)</option>
+              <option value="serif">Serif (Noto Serif)</option>
+              <option value="monospace">Monospace (Noto Mono)</option>
+              <option value="'Arimo', sans-serif">Arial / Arimo</option>
+              <option value="'Oswald', sans-serif">Impact / Oswald</option>
+              <option value="'Tinos', serif">Times New Roman / Tinos</option>
+              <option value="'Tinos', serif">Georgia / Tinos</option>
+              <option value="'Roboto', sans-serif">Roboto</option>
+              <option value="'Open Sans', sans-serif">Open Sans</option>
+              <option value="'Montserrat', sans-serif">Montserrat</option>
+              <option value="'Oswald', sans-serif">Oswald</option>
+              <option value="'Fira Sans', sans-serif">Fira Sans</option>
+              <option value="'Cousine', monospace">Cousine (Courier)</option>
+              <option value="'Comic Neue', cursive">Comic Neue</option>
             </select>
           </Row>
           <Row label={`${t('rowFontSize')} ${text.fontSize}px`}>
-            <input type="range" min={16} max={200} step={2} value={text.fontSize}
+            <input type="range" min={16} max={300} step={2} value={text.fontSize}
               onChange={(e) => update({ fontSize: Number(e.target.value) })} className="w-full" />
           </Row>
           <Row label={t('rowFontWeight')}>

@@ -120,6 +120,32 @@ const translations = {
     extractAudioHint: 'Извлечь аудио на отдельную дорожку. Звук в видео будет отключён.',
     extractAudioBtn: 'Извлечь аудио на дорожку',
 
+    // ── Export progress ──────────────────────────────────
+    exportNoClips: 'Нет клипов для экспорта',
+    exportStarting: 'Запуск видео-движка…',
+    exportProcessingVideo: 'Обработка видео',
+    exportProcessingAudio: 'Обработка аудио',
+    exportCompositing: 'Компоновка видео…',
+    exportLoadingFonts: 'Загрузка шрифтов…',
+    exportBurningText: 'Наложение текста…',
+    exportMixingAudio: 'Микширование аудио…',
+    exportFinalizing: 'Завершение…',
+    exportComplete: 'Готово!',
+
+    // ── FFmpeg loader progress ────────────────────────────
+    ffmpegLoading: 'Загрузка видео-движка…',
+    ffmpegLoadingCdn: 'Загрузка с',
+    ffmpegLoadingWasm: 'Загрузка WASM (~30 МБ)…',
+    ffmpegInitializing: 'Инициализация…',
+    ffmpegReady: 'Видео-движок готов',
+    ffmpegPreparingClips: 'Подготовка клипов…',
+    ffmpegLoadingClip: 'Загрузка клипа',
+    ffmpegOf: 'из',
+    ffmpegProcessingClip: 'Обработка клипа',
+    ffmpegMergingClips: 'Склеиваю клипы…',
+    ffmpegApplyingFade: 'Применяю fade эффекты…',
+    ffmpegFinalizingResult: 'Формирую результат…',
+
     // ── Preview Panel ────────────────────────────────────
     previewEmpty: 'Предпросмотр',
     previewEmptyHint: 'Добавьте медиа или текст для начала',
@@ -338,6 +364,32 @@ const translations = {
 
     extractAudioHint: 'Extract audio to a separate track. Video audio will be muted.',
     extractAudioBtn: 'Extract audio to track',
+
+    // ── Export progress ──────────────────────────────────
+    exportNoClips: 'No clips to export',
+    exportStarting: 'Starting video engine…',
+    exportProcessingVideo: 'Processing video',
+    exportProcessingAudio: 'Processing audio',
+    exportCompositing: 'Compositing video…',
+    exportLoadingFonts: 'Loading fonts…',
+    exportBurningText: 'Applying text overlays…',
+    exportMixingAudio: 'Mixing audio…',
+    exportFinalizing: 'Finalizing…',
+    exportComplete: 'Done!',
+
+    // ── FFmpeg loader progress ────────────────────────────
+    ffmpegLoading: 'Loading video engine…',
+    ffmpegLoadingCdn: 'Loading from',
+    ffmpegLoadingWasm: 'Loading WASM (~30 MB)…',
+    ffmpegInitializing: 'Initializing…',
+    ffmpegReady: 'Video engine ready',
+    ffmpegPreparingClips: 'Preparing clips…',
+    ffmpegLoadingClip: 'Loading clip',
+    ffmpegOf: 'of',
+    ffmpegProcessingClip: 'Processing clip',
+    ffmpegMergingClips: 'Merging clips…',
+    ffmpegApplyingFade: 'Applying fade effects…',
+    ffmpegFinalizingResult: 'Finalizing result…',
 
     // ── Preview Panel ────────────────────────────────────
     previewEmpty: 'Preview',

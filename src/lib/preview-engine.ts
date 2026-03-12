@@ -637,9 +637,7 @@ export class PreviewEngine {
         let bgX = x - maxW / 2 - pad;
         if (ti.textAlign === 'left') bgX = x - pad;
         else if (ti.textAlign === 'right') bgX = x - maxW - pad;
-        ctx.beginPath();
-        ctx.roundRect(bgX, startY - lineHeight / 2 - pad / 2, maxW + pad * 2, totalH + pad, ti.fontSize * 0.15);
-        ctx.fill();
+        ctx.fillRect(bgX, startY - lineHeight / 2 - pad / 2, maxW + pad * 2, totalH + pad);
       }
 
       if (ti.shadowBlur > 0) {
