@@ -330,7 +330,7 @@ function TextProperties({ text, updateTextItem, mobile }: { text: TextItem; upda
               <option value="'Oswald', sans-serif">Oswald</option>
               <option value="'Fira Sans', sans-serif">Fira Sans</option>
               <option value="'Cousine', monospace">Cousine (Courier)</option>
-              <option value="'Caveat', cursive">Caveat (рукописный)</option>
+              <option value="'Caveat', cursive">Caveat</option>
             </select>
           </Row>
           <Row label={`${t('rowFontSize')} ${text.fontSize}px`}>
