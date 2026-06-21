@@ -4,7 +4,7 @@
  */
 import React, { useCallback, useMemo, useRef, useState, useEffect, memo, type DragEvent } from 'react';
 import {
-  Plus, Minus, ZoomIn, Type, Scissors, Volume2, VolumeX, Lock, Unlock, Eye, EyeOff, ChevronRight, ChevronLeft, Trash2, Music, Film, SplitSquareVertical, ChevronDown, GripHorizontal, ChevronUp,
+  Plus, Minus, ZoomIn, Type, Scissors, Volume2, VolumeX, Lock, Unlock, Eye, EyeOff, ChevronRight, ChevronLeft, Trash2, Music, Film, SplitSquareVertical, ChevronDown, GripHorizontal, ChevronUp, Blend,
 } from 'lucide-react';
 import { useEditorStore, uid } from '../store/editor-store';
 import { importFiles } from '../lib/media-utils';
@@ -230,6 +230,8 @@ export default function Timeline() {
       'touches' in e ? e.touches[0]?.clientY ?? dragging.startY : e.clientY;
 
     const onMove = (e: MouseEvent | TouchEvent) => {
+      // While actively dragging a clip, stop the timeline/page from scrolling.
+      if ('touches' in e && e.cancelable) e.preventDefault();
       const dx = getClientX(e) - dragging.startX;
       const dt = dx / pps;
 
@@ -368,7 +370,7 @@ export default function Timeline() {
     const newId = addTextItem({
       trackId: textTrack.id,
       startOnTimeline: currentTime, duration: 3,
-      text: t('text'), fontFamily: 'sans-serif', fontSize: 64, fontWeight: 700,
+      text: t('text'), fontFamily: "'Noto Sans', sans-serif", fontSize: 64, fontWeight: 700,
       color: '#ffffff', backgroundColor: '', textAlign: 'center',
       x: 0.5, y: 0.5, opacity: 1, fadeIn: 0.3, fadeOut: 0.3,
       strokeColor: '#000000', strokeWidth: 2, shadowBlur: 4, shadowColor: '#000000',
@@ -381,24 +383,41 @@ export default function Timeline() {
     selectedClipIds.forEach((id) => splitClip(id, currentTime));
   }, [selectedClipIds, currentTime, splitClip]);
 
-  /* ── right-click on clip → transition menu ─── */
-  const handleClipContextMenu = useCallback((e: React.MouseEvent, clipId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
+  /* ── find an adjacent same-track clip to form a transition pair ─── */
+  const findTransitionPair = useCallback((clipId: string): { clipA: string; clipB: string } | null => {
     const clip = clips.find((c) => c.id === clipId);
-    if (!clip) return;
-    // Find adjacent clip on the same track (next clip)
+    if (!clip) return null;
     const sameTrack = clips
       .filter((c) => c.trackId === clip.trackId && c.id !== clip.id)
       .sort((a, b) => a.startOnTimeline - b.startOnTimeline);
     const next = sameTrack.find((c) => c.startOnTimeline >= clip.startOnTimeline + clip.duration - 0.5);
     const prev = sameTrack.filter((c) => c.startOnTimeline + c.duration <= clip.startOnTimeline + 0.5).pop();
-    const adjacent = next ?? prev;
-    if (!adjacent) return;
+    if (!next && !prev) return null;
     const clipA = (next ? clip : prev)!;
     const clipB = next ?? clip;
-    setTransitionMenu({ clipA: clipA.id, clipB: clipB.id, x: e.clientX, y: e.clientY });
+    return { clipA: clipA.id, clipB: clipB.id };
   }, [clips]);
+
+  /* ── right-click on clip → transition menu (desktop) ─── */
+  const handleClipContextMenu = useCallback((e: React.MouseEvent, clipId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const pair = findTransitionPair(clipId);
+    if (!pair) return;
+    setTransitionMenu({ ...pair, x: e.clientX, y: e.clientY });
+  }, [findTransitionPair]);
+
+  /* ── toolbar transition button (touch-friendly alternative to right-click) ─── */
+  const transitionBtnRef = useRef<HTMLButtonElement>(null);
+  const selectedClipId = selectedClipIds.size === 1 ? [...selectedClipIds][0] : null;
+  const transitionAvailable = selectedClipId ? !!findTransitionPair(selectedClipId) : false;
+  const handleTransitionBtn = useCallback(() => {
+    if (!selectedClipId) return;
+    const pair = findTransitionPair(selectedClipId);
+    if (!pair) return;
+    const r = transitionBtnRef.current?.getBoundingClientRect();
+    setTransitionMenu({ ...pair, x: r ? r.left : 100, y: r ? r.bottom + 4 : 100 });
+  }, [selectedClipId, findTransitionPair]);
 
   /* ── playhead position ─── */
   const playheadX = currentTime * pps - scrollLeft;
@@ -444,6 +463,9 @@ export default function Timeline() {
         </button>
         <button onClick={handleSplit} disabled={selectedClipIds.size === 0} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-gray-300 text-xs hover:bg-white/10 transition-colors disabled:opacity-30 flex-shrink-0" title={`${t('split')} (S)`}>
           <Scissors size={13} /> <span className="hidden sm:inline">{t('split')}</span>
+        </button>
+        <button ref={transitionBtnRef} onClick={handleTransitionBtn} disabled={!transitionAvailable} className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-gray-300 text-xs hover:bg-white/10 transition-colors disabled:opacity-30 flex-shrink-0" title={t('transition')}>
+          <Blend size={13} /> <span className="hidden sm:inline">{t('transition')}</span>
         </button>
         <button onClick={() => { selectedClipIds.forEach((id) => removeClip(id)); if (selectedTextId) removeTextItem(selectedTextId); }}
           disabled={selectedClipIds.size === 0 && !selectedTextId}
@@ -617,7 +639,7 @@ const ClipBlock = memo(function ClipBlock({ clip, track, pps, h, selected, media
 
   return (
     <div
-      className={`absolute top-1 bottom-1 rounded overflow-hidden cursor-grab active:cursor-grabbing border ${border} ${selected ? 'ring-2 ring-white/60 z-20' : 'z-10'} ${dimmed ? 'opacity-40' : ''} ${track.locked ? 'cursor-not-allowed' : ''} transition-shadow`}
+      className={`absolute top-1 bottom-1 rounded overflow-hidden cursor-grab active:cursor-grabbing touch-none border ${border} ${selected ? 'ring-2 ring-white/60 z-20' : 'z-10'} ${dimmed ? 'opacity-40' : ''} ${track.locked ? 'cursor-not-allowed' : ''} transition-shadow`}
       style={{ left, width }}
       onContextMenu={(e) => onContextMenu(e, clip.id)}
       onMouseDown={(e) => {
@@ -685,7 +707,7 @@ const TextBlock = memo(function TextBlock({ item, pps, h, selected, track, onSta
 
   return (
     <div
-      className={`absolute top-1 bottom-1 rounded bg-amber-400/50 border border-amber-400 overflow-hidden cursor-grab active:cursor-grabbing ${selected ? 'ring-2 ring-white/60 z-20' : 'z-10'} ${dimmed ? 'opacity-40' : ''} ${track?.locked ? 'cursor-not-allowed' : ''} transition-shadow`}
+      className={`absolute top-1 bottom-1 rounded bg-amber-400/50 border border-amber-400 overflow-hidden cursor-grab active:cursor-grabbing touch-none ${selected ? 'ring-2 ring-white/60 z-20' : 'z-10'} ${dimmed ? 'opacity-40' : ''} ${track?.locked ? 'cursor-not-allowed' : ''} transition-shadow`}
       style={{ left, width }}
       onMouseDown={(e) => {
         if (e.button !== 0) return;

@@ -40,6 +40,7 @@ const translations = {
     mediaLibrary: 'Медиатека',
     importFiles: 'Импортировать файлы',
     videoAudioImages: 'Видео, аудио, изображения',
+    dropToImport: 'Отпустите, чтобы импортировать',
     filterAll: 'Все',
     filterVideo: 'Видео',
     filterAudio: 'Аудио',
@@ -112,6 +113,7 @@ const translations = {
     fontWeightBlack: 'Чёрный',
     textPlaceholder: 'Введите текст...',
 
+    transition: 'Переход',
     transitionNoneHint: 'Разместите два клипа рядом на одной дорожке для добавления перехода',
     addTransitionToPrev: '← Добавить переход к предыдущему',
     addTransitionToNext: '→ Добавить переход к следующему',
@@ -285,6 +287,7 @@ const translations = {
     mediaLibrary: 'Media Library',
     importFiles: 'Import files',
     videoAudioImages: 'Video, audio, images',
+    dropToImport: 'Drop to import',
     filterAll: 'All',
     filterVideo: 'Video',
     filterAudio: 'Audio',
@@ -357,6 +360,7 @@ const translations = {
     fontWeightBlack: 'Black',
     textPlaceholder: 'Enter text...',
 
+    transition: 'Transition',
     transitionNoneHint: 'Place two clips next to each other on the same track to add a transition',
     addTransitionToPrev: '← Add transition to previous',
     addTransitionToNext: '→ Add transition to next',

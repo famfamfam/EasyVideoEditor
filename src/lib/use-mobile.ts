@@ -1,12 +1,18 @@
 /**
- * useMobileLayout — detects mobile screen size and orientation.
+ * useMobileLayout — detects compact (phone/tablet) screen size and orientation.
+ *
+ * The threshold is 1024px so tablets in portrait (iPad ≈768–834, many Android
+ * tablets) get the touch-friendly tabbed layout instead of a cramped 3-column
+ * desktop view. Tablets in landscape (≥1024px) keep the full desktop layout.
  *
  * Returns:
- *   isMobile     – viewport width < 768px (Tailwind md breakpoint)
- *   isLandscape  – device is in landscape orientation AND is mobile-sized
- *   isPortrait   – device is in portrait orientation AND is mobile-sized
+ *   isMobile     – viewport width < 1024px (use the compact/tabbed layout)
+ *   isLandscape  – landscape orientation AND compact-sized
+ *   isPortrait   – portrait orientation AND compact-sized
  */
 import { useSyncExternalStore } from 'react';
+
+const COMPACT_MAX = 1024;
 
 interface MobileInfo {
   isMobile: boolean;
@@ -17,7 +23,7 @@ interface MobileInfo {
 function getSnapshot(): MobileInfo {
   const w = window.innerWidth;
   const h = window.innerHeight;
-  const isMobile = w < 768;
+  const isMobile = w < COMPACT_MAX;
   const isLandscape = isMobile && w > h;
   const isPortrait = isMobile && !isLandscape;
   return { isMobile, isLandscape, isPortrait };

@@ -11,6 +11,22 @@ import { DEFAULT_TEXT_ITEM } from '../types';
 let _id = 0;
 export const uid = (prefix = 'id') => `${prefix}_${++_id}_${Date.now().toString(36)}`;
 
+const INITIAL_TRACKS: Track[] = [
+  { id: 'v1', kind: 'video', name: 'Video 1', muted: false, locked: false, visible: true, volume: 1 },
+  { id: 'v2', kind: 'video', name: 'Video 2', muted: false, locked: false, visible: true, volume: 1 },
+  { id: 't1', kind: 'text', name: 'Text 1', muted: false, locked: false, visible: true, volume: 1 },
+  { id: 'a1', kind: 'audio', name: 'Audio 1', muted: false, locked: false, visible: true, volume: 1 },
+  { id: 'a2', kind: 'audio', name: 'Audio 2', muted: false, locked: false, visible: true, volume: 1 },
+];
+
+type HistorySnapshot = { clips: Clip[]; tracks: Track[]; transitions: Transition[]; textItems: TextItem[] };
+const snapshot = (s: { clips: Clip[]; tracks: Track[]; transitions: Transition[]; textItems: TextItem[] }): HistorySnapshot => ({
+  clips: structuredClone(s.clips),
+  tracks: structuredClone(s.tracks),
+  transitions: structuredClone(s.transitions),
+  textItems: structuredClone(s.textItems),
+});
+
 interface EditorState {
   project: Project;
   setProject: (p: Partial<Project>) => void;
@@ -61,9 +77,13 @@ interface EditorState {
   exportMessage: string;
   setExportState: (exporting: boolean, progress?: number, message?: string) => void;
 
-  _history: Array<{ clips: Clip[]; tracks: Track[]; transitions: Transition[]; textItems: TextItem[] }>;
+  _history: HistorySnapshot[];
   _historyIdx: number;
+  _lastHistoryKey: string | null;
+  _lastHistoryTime: number;
   pushHistory: () => void;
+  /** Like pushHistory, but coalesces rapid edits sharing the same key (e.g. slider drags). */
+  commitHistory: (key: string) => void;
   undo: () => void;
   redo: () => void;
 
@@ -103,13 +123,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       };
     }),
 
-  tracks: [
-    { id: 'v1', kind: 'video', name: 'Video 1', muted: false, locked: false, visible: true, volume: 1 },
-    { id: 'v2', kind: 'video', name: 'Video 2', muted: false, locked: false, visible: true, volume: 1 },
-    { id: 't1', kind: 'text', name: 'Text 1', muted: false, locked: false, visible: true, volume: 1 },
-    { id: 'a1', kind: 'audio', name: 'Audio 1', muted: false, locked: false, visible: true, volume: 1 },
-    { id: 'a2', kind: 'audio', name: 'Audio 2', muted: false, locked: false, visible: true, volume: 1 },
-  ],
+  tracks: structuredClone(INITIAL_TRACKS),
   addTrack: (kind, name) => {
     const id = uid(kind === 'video' ? 'v' : kind === 'text' ? 't' : 'a');
     const count = get().tracks.filter((t) => t.kind === kind).length + 1;
@@ -127,15 +141,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       clips: s.clips.filter((c) => c.trackId !== id),
       textItems: s.textItems.filter((ti) => ti.trackId !== id),
     })),
-  updateTrack: (id, patch) =>
-    set((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
-  reorderTracks: (from, to) =>
+  updateTrack: (id, patch) => {
+    set((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }));
+    get().commitHistory(`track:${id}:${Object.keys(patch).sort().join(',')}`);
+  },
+  reorderTracks: (from, to) => {
     set((s) => {
       const t = [...s.tracks];
       const [moved] = t.splice(from, 1);
       t.splice(to, 0, moved);
       return { tracks: t };
-    }),
+    });
+    get().pushHistory();
+  },
 
   clips: [],
   addClip: (clip) => {
@@ -154,6 +172,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   updateClip: (id, patch) => {
     set((s) => ({ clips: s.clips.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
+    get().commitHistory(`clip:${id}:${Object.keys(patch).sort().join(',')}`);
   },
   moveClip: (id, newTrackId, newStart) => {
     set((s) => ({
@@ -263,6 +282,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   updateTextItem: (id, patch) => {
     set((s) => ({ textItems: s.textItems.map((ti) => (ti.id === id ? { ...ti, ...patch } : ti)) }));
+    get().commitHistory(`text:${id}:${Object.keys(patch).sort().join(',')}`);
   },
 
   transitions: [],
@@ -352,32 +372,43 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setExportState: (exporting, progress = 0, message = '') =>
     set({ exporting, exportProgress: progress, exportMessage: message }),
 
-  _history: [],
-  _historyIdx: -1,
+  // Seed history with the initial state so the first action is undoable.
+  _history: [{ clips: [], tracks: structuredClone(INITIAL_TRACKS), transitions: [], textItems: [] }],
+  _historyIdx: 0,
+  _lastHistoryKey: null,
+  _lastHistoryTime: 0,
   pushHistory: () =>
     set((s) => {
-      const snap = {
-        clips: structuredClone(s.clips),
-        tracks: structuredClone(s.tracks),
-        transitions: structuredClone(s.transitions),
-        textItems: structuredClone(s.textItems),
-      };
       const hist = s._history.slice(0, s._historyIdx + 1);
-      hist.push(snap);
+      hist.push(snapshot(s));
       if (hist.length > 50) hist.shift();
-      return { _history: hist, _historyIdx: hist.length - 1 };
+      return { _history: hist, _historyIdx: hist.length - 1, _lastHistoryKey: null };
+    }),
+  commitHistory: (key) =>
+    set((s) => {
+      const now = Date.now();
+      // Coalesce rapid edits with the same key (e.g. one slider drag) into a single entry.
+      if (key === s._lastHistoryKey && now - s._lastHistoryTime < 800 && s._historyIdx >= 0) {
+        const hist = s._history.slice();
+        hist[s._historyIdx] = snapshot(s);
+        return { _history: hist, _lastHistoryTime: now };
+      }
+      const hist = s._history.slice(0, s._historyIdx + 1);
+      hist.push(snapshot(s));
+      if (hist.length > 50) hist.shift();
+      return { _history: hist, _historyIdx: hist.length - 1, _lastHistoryKey: key, _lastHistoryTime: now };
     }),
   undo: () =>
     set((s) => {
       const idx = s._historyIdx - 1;
       if (idx < 0) return s;
-      return { ...s._history[idx], _historyIdx: idx };
+      return { ...structuredClone(s._history[idx]), _historyIdx: idx, _lastHistoryKey: null };
     }),
   redo: () =>
     set((s) => {
       const idx = s._historyIdx + 1;
       if (idx >= s._history.length) return s;
-      return { ...s._history[idx], _historyIdx: idx };
+      return { ...structuredClone(s._history[idx]), _historyIdx: idx, _lastHistoryKey: null };
     }),
 
   totalDuration: () => {

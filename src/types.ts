@@ -84,7 +84,7 @@ export interface TextItem {
 export const DEFAULT_TEXT_ITEM: Omit<TextItem, 'id' | 'trackId' | 'startOnTimeline'> = {
   duration: 5,
   text: 'Новый текст',
-  fontFamily: 'sans-serif',
+  fontFamily: "'Noto Sans', sans-serif",
   fontSize: 64,
   fontWeight: 700,
   color: '#ffffff',

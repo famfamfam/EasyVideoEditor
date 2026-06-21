@@ -1,0 +1,19 @@
+{
+  "name": "EasyVideoEditor — Free Online Video Editor",
+  "short_name": "VideoEditor",
+  "description": "Free browser-based video editor. Trim, merge, transitions and effects — all processing runs locally.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0b0f",
+  "theme_color": "#0b0b0f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

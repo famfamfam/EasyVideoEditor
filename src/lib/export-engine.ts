@@ -59,6 +59,20 @@ const FONT_MAP: Record<string, { regular: string; bold: string }> = {
     regular: 'https://fonts.gstatic.com/s/notosansmono/v37/BngrUXNETWXI6LwhGYvaxZikqZqK6fBq6kPvUce2oAZcdthSBUsYck4-_FNJ49o.ttf',
     bold:    'https://fonts.gstatic.com/s/notosansmono/v37/BngrUXNETWXI6LwhGYvaxZikqZqK6fBq6kPvUce2oAZcdthSBUsYck4-_LRO49o.ttf',
   },
+  // Explicit Noto names so the picker's generic options resolve to the SAME
+  // font in preview (loaded via <link>) and export (embedded TTF).
+  'Noto Sans': {
+    regular: 'https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A99d.ttf',
+    bold:    'https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyAaBN9d.ttf',
+  },
+  'Noto Serif': {
+    regular: 'https://fonts.gstatic.com/s/notoserif/v33/ga6iaw1J5X9T9RW6j9bNVls-hfgvz8JcMofYTa32J4wsL2JAlAhZqFCjwA.ttf',
+    bold:    'https://fonts.gstatic.com/s/notoserif/v33/ga6iaw1J5X9T9RW6j9bNVls-hfgvz8JcMofYTa32J4wsL2JAlAhZT1ejwA.ttf',
+  },
+  'Noto Sans Mono': {
+    regular: 'https://fonts.gstatic.com/s/notosansmono/v37/BngrUXNETWXI6LwhGYvaxZikqZqK6fBq6kPvUce2oAZcdthSBUsYck4-_FNJ49o.ttf',
+    bold:    'https://fonts.gstatic.com/s/notosansmono/v37/BngrUXNETWXI6LwhGYvaxZikqZqK6fBq6kPvUce2oAZcdthSBUsYck4-_LRO49o.ttf',
+  },
   // ── System font aliases (mapped to closest Google Fonts) ───
   'Arial': {
     regular: 'https://fonts.gstatic.com/s/arimo/v35/P5sfzZCDf9_T_3cV7NCUECyoxNk37cxsBw.ttf',
@@ -110,8 +124,9 @@ const FONT_MAP: Record<string, { regular: string; bold: string }> = {
     bold:    'https://fonts.gstatic.com/s/oswald/v57/TK3_WkUHHAIjg75cFRf3bXL8LICs1xZogUE.ttf',
   },
   'Comic Sans MS': {
-    regular: 'https://fonts.gstatic.com/s/comicneue/v9/4UaHrEJDsxBrF37olUeDx60.ttf',
-    bold:    'https://fonts.gstatic.com/s/comicneue/v9/4UaErEJDsxBrF37olUeD_xHMwps.ttf',
+    // Mapped to Caveat — a casual handwriting font that (unlike Comic Neue) has Cyrillic.
+    regular: 'https://fonts.gstatic.com/s/caveat/v23/WnznHAc5bAfYB2QRah7pcpNvOx-pjfJ9SII.ttf',
+    bold:    'https://fonts.gstatic.com/s/caveat/v23/WnznHAc5bAfYB2QRah7pcpNvOx-pjRV6SII.ttf',
   },
   'Arimo': {
     regular: 'https://fonts.gstatic.com/s/arimo/v35/P5sfzZCDf9_T_3cV7NCUECyoxNk37cxsBw.ttf',
@@ -129,9 +144,9 @@ const FONT_MAP: Record<string, { regular: string; bold: string }> = {
     regular: 'https://fonts.gstatic.com/s/firasans/v18/va9E4kDNxMZdWfMOD5VfkA.ttf',
     bold:    'https://fonts.gstatic.com/s/firasans/v18/va9B4kDNxMZdWfMOD5VnLK3uQQ.ttf',
   },
-  'Comic Neue': {
-    regular: 'https://fonts.gstatic.com/s/comicneue/v9/4UaHrEJDsxBrF37olUeDx60.ttf',
-    bold:    'https://fonts.gstatic.com/s/comicneue/v9/4UaErEJDsxBrF37olUeD_xHMwps.ttf',
+  'Caveat': {
+    regular: 'https://fonts.gstatic.com/s/caveat/v23/WnznHAc5bAfYB2QRah7pcpNvOx-pjfJ9SII.ttf',
+    bold:    'https://fonts.gstatic.com/s/caveat/v23/WnznHAc5bAfYB2QRah7pcpNvOx-pjRV6SII.ttf',
   },
 };
 
@@ -257,56 +272,6 @@ function effectsToFilter(fx?: ClipEffects): string {
   // opacity is handled at the compositing stage (Step 2) via alpha channel,
   // not here — so we do NOT apply colorchannelmixer here.
   return parts.join(',');
-}
-
-/** Build drawtext filter string for a text item (timestamps relative to overlay start) */
-function drawtextFilter(t: TextItem, w: number, h: number): string {
-  const esc = (s: string) => s.replace(/'/g, "'\\\\\\''").replace(/:/g, '\\:').replace(/\\/g, '\\\\');
-  const x = Math.round(t.x * w);
-  const y = Math.round(t.y * h);
-  const parts = [
-    `text='${esc(t.text)}'`,
-    `fontsize=${t.fontSize}`,
-    `fontcolor=${t.color}`,
-    `x=${x}-tw/2`, `y=${y}-th/2`,
-  ];
-  if (t.fontFamily) parts.push(`font='${esc(t.fontFamily)}'`);
-  if (t.strokeWidth > 0) parts.push(`borderw=${t.strokeWidth ?? 0}`, `bordercolor=${t.strokeColor ?? 'black'}`);
-  if (t.shadowBlur) parts.push(`shadowx=2`, `shadowy=2`, `shadowcolor=${t.shadowColor ?? 'black'}`);
-  if (t.backgroundColor) {
-    // Parse backgroundColor to extract alpha. Use full opacity by default (matching preview).
-    const bgColor = t.backgroundColor;
-    // If it's a hex color like #RRGGBB, use @1.0 (fully opaque).
-    // If it's rgba(...), extract the alpha value.
-    let boxAlpha = '1.0';
-    const rgbaMatch = bgColor.match(/rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*([\d.]+)\s*)?\)/i);
-    if (rgbaMatch && rgbaMatch[1] !== undefined) {
-      boxAlpha = parseFloat(rgbaMatch[1]).toFixed(2);
-    }
-    // boxborderw provides the padding around the text (matches preview padding = fontSize * 0.4)
-    const boxPad = Math.max(8, Math.round(t.fontSize * 0.4));
-    parts.push(`box=1`, `boxcolor=${bgColor}@${boxAlpha}`, `boxborderw=${boxPad}`);
-  }
-
-  // fade alpha
-  if (t.fadeIn > 0 || t.fadeOut > 0) {
-    let alpha = '1';
-    if (t.fadeIn > 0) {
-      alpha = `if(lt(t,${t.fadeIn.toFixed(2)}),t/${t.fadeIn.toFixed(2)},1)`;
-    }
-    if (t.fadeOut > 0) {
-      const durSec = t.duration.toFixed(2);
-      const fadeStart = (t.duration - t.fadeOut).toFixed(2);
-      const fadePart = `if(gt(t,${fadeStart}),(${durSec}-t)/${t.fadeOut.toFixed(2)},1)`;
-      alpha = t.fadeIn > 0 ? `min(${alpha},${fadePart})` : fadePart;
-    }
-    parts.push(`alpha='${alpha}'`);
-  }
-
-  // enable only during the text's duration
-  parts.push(`enable='between(t,0,${t.duration.toFixed(3)})'`);
-
-  return `drawtext=${parts.join(':')}`;
 }
 
 /** Map NLE transition type → FFmpeg xfade transition name */
@@ -948,36 +913,24 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
         .replace(/:/g, '\\:')
         .replace(/%/g, '%%');
 
-      const x = Math.round(item.x * width);
-      const y = Math.round(item.y * height);
-      const textContent = item.text.replace(/\n/g, ' ');  // drawtext doesn't handle \n well
       const fontKey = `${item.fontFamily}|${item.fontWeight}`;
       const fontFile = fontFileMap.get(fontKey) ?? '';
 
-      const parts: string[] = [];
-      if (fontFile) parts.push(`fontfile=${fontFile}`);
-      parts.push(
-        `text='${escDrawtext(textContent)}'`,
-        `fontsize=${item.fontSize}`,
-        `fontcolor=${item.color}`,
-        `x=${x}-tw/2`,
-        `y=${y}-th/2`,
-      );
+      // ── Layout matches the preview (preview-engine renderTextOverlays) ──
+      // Multiple lines, vertically centered around item.y; horizontal anchor
+      // follows Canvas textAlign semantics so left/right align match the preview.
+      const lines = item.text.split('\n');
+      const lineHeight = item.fontSize * 1.3;
+      const totalH = lines.length * lineHeight;
+      const xc = Math.round(item.x * width);
+      const yc = item.y * height;
+      const startY = yc - totalH / 2 + lineHeight / 2; // baseline-middle of line 0
+      const xExpr = item.textAlign === 'left' ? `${xc}`
+        : item.textAlign === 'right' ? `${xc}-tw`
+        : `${xc}-tw/2`;
 
-      if (item.strokeWidth > 0) parts.push(`borderw=${item.strokeWidth}`, `bordercolor=${item.strokeColor ?? 'black'}`);
-      if (item.shadowBlur > 0) parts.push(`shadowx=2`, `shadowy=2`, `shadowcolor=${item.shadowColor ?? 'black'}`);
-      if (item.backgroundColor) {
-        const bgColor = item.backgroundColor;
-        let boxAlpha = '1.0';
-        const rgbaMatch = bgColor.match(/rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*([\d.]+)\s*)?\)/i);
-        if (rgbaMatch && rgbaMatch[1] !== undefined) {
-          boxAlpha = parseFloat(rgbaMatch[1]).toFixed(2);
-        }
-        const boxPad = Math.max(8, Math.round(item.fontSize * 0.4));
-        parts.push(`box=1`, `boxcolor=${bgColor}@${boxAlpha}`, `boxborderw=${boxPad}`);
-      }
-
-      // Fade in/out alpha expression using absolute time
+      // Shared fade/opacity alpha expression (absolute time)
+      let alphaPart = '';
       if (item.fadeIn > 0 || item.fadeOut > 0) {
         const tStart = item.startOnTimeline;
         const tEnd = item.startOnTimeline + item.duration;
@@ -988,24 +941,57 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
         if (item.fadeOut > 0) {
           const fadeOutStart = (tEnd - item.fadeOut).toFixed(3);
           const fadeOutExpr = `if(gt(t,${fadeOutStart}),(${tEnd.toFixed(3)}-t)/${item.fadeOut.toFixed(3)},1)`;
-          if (item.fadeIn > 0) {
-            alphaExpr = `min(${alphaExpr},${fadeOutExpr})`;
-          } else {
-            alphaExpr = fadeOutExpr;
-          }
+          alphaExpr = item.fadeIn > 0 ? `min(${alphaExpr},${fadeOutExpr})` : fadeOutExpr;
         }
-        if (item.opacity < 1) {
-          alphaExpr = `(${alphaExpr})*${item.opacity.toFixed(2)}`;
-        }
-        parts.push(`alpha='${alphaExpr}'`);
+        if (item.opacity < 1) alphaExpr = `(${alphaExpr})*${item.opacity.toFixed(2)}`;
+        alphaPart = `alpha='${alphaExpr}'`;
       } else if (item.opacity < 1) {
-        parts.push(`alpha=${item.opacity.toFixed(2)}`);
+        alphaPart = `alpha=${item.opacity.toFixed(2)}`;
       }
 
-      // enable window at absolute time
-      parts.push(`enable='between(t,${item.startOnTimeline.toFixed(3)},${(item.startOnTimeline + item.duration).toFixed(3)})'`);
+      const enablePart = `enable='between(t,${item.startOnTimeline.toFixed(3)},${(item.startOnTimeline + item.duration).toFixed(3)})'`;
 
-      const vfStr = `drawtext=${parts.join(':')}`;
+      // Background box (alpha parsed from rgba())
+      const boxParts: string[] = [];
+      if (item.backgroundColor) {
+        const bgColor = item.backgroundColor;
+        let boxAlpha = '1.0';
+        const rgbaMatch = bgColor.match(/rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*([\d.]+)\s*)?\)/i);
+        if (rgbaMatch && rgbaMatch[1] !== undefined) boxAlpha = parseFloat(rgbaMatch[1]).toFixed(2);
+        const boxPad = Math.max(8, Math.round(item.fontSize * 0.4));
+        boxParts.push(`box=1`, `boxcolor=${bgColor}@${boxAlpha}`, `boxborderw=${boxPad}`);
+      }
+
+      // Canvas strokeText centers the stroke on the glyph edge (≈ half outside),
+      // FFmpeg borderw draws it fully outside — halve to match the preview weight.
+      const borderParts = item.strokeWidth > 0
+        ? [`borderw=${Math.max(1, Math.round(item.strokeWidth / 2))}`, `bordercolor=${item.strokeColor ?? 'black'}`]
+        : [];
+
+      // Preview shadow uses offsetX=0, offsetY=2 (blur can't be represented in drawtext)
+      const shadowParts = item.shadowBlur > 0
+        ? [`shadowx=0`, `shadowy=2`, `shadowcolor=${item.shadowColor ?? 'black'}`]
+        : [];
+
+      const buildLine = (lineText: string, i: number): string => {
+        const ly = Math.round(startY + i * lineHeight);
+        const p: string[] = [];
+        if (fontFile) p.push(`fontfile=${fontFile}`);
+        p.push(
+          `text='${escDrawtext(lineText)}'`,
+          `fontsize=${item.fontSize}`,
+          `fontcolor=${item.color}`,
+          `x=${xExpr}`,
+          `y=${ly}-th/2`,
+        );
+        p.push(...borderParts, ...shadowParts, ...boxParts);
+        if (alphaPart) p.push(alphaPart);
+        p.push(enablePart);
+        return `drawtext=${p.join(':')}`;
+      };
+
+      // One drawtext per line, chained in a single -vf pass
+      const vfStr = lines.map(buildLine).join(',');
       console.log(`[export] drawtext filter for item ${ti}:`, vfStr);
 
       const txtRet = await ffmpeg.exec([
@@ -1019,18 +1005,21 @@ export async function exportProject(input: ExportInput, onProgress?: ProgressCal
       if (txtOk) { try { const d = await ffmpeg.readFile(txtOutput); txtOk = d instanceof Uint8Array && d.byteLength > 100; } catch { txtOk = false; } }
 
       if (!txtOk) {
-        // Retry without alpha, enable — simplest possible drawtext
+        // Retry without alpha, enable — simplest possible drawtext (still per-line)
         console.warn(`[export] drawtext failed for item ${ti}, retrying simplified...`);
-        const simpleParts: string[] = [];
-        if (fontFile) simpleParts.push(`fontfile=${fontFile}`);
-        simpleParts.push(
-          `text='${escDrawtext(textContent)}'`,
-          `fontsize=${item.fontSize}`,
-          `fontcolor=${item.color}`,
-          `x=${x}-tw/2`,
-          `y=${y}-th/2`,
-        );
-        const simpleVf = `drawtext=${simpleParts.join(':')}`;
+        const simpleVf = lines.map((lineText, i) => {
+          const ly = Math.round(startY + i * lineHeight);
+          const sp: string[] = [];
+          if (fontFile) sp.push(`fontfile=${fontFile}`);
+          sp.push(
+            `text='${escDrawtext(lineText)}'`,
+            `fontsize=${item.fontSize}`,
+            `fontcolor=${item.color}`,
+            `x=${xExpr}`,
+            `y=${ly}-th/2`,
+          );
+          return `drawtext=${sp.join(':')}`;
+        }).join(',');
         const retryRet = await ffmpeg.exec([
           '-i', txtCurrent, '-vf', simpleVf,
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', String(settings.crf ?? 23), '-pix_fmt', 'yuv420p',

@@ -127,12 +127,12 @@ Output will be in the `dist/` folder.
 
 ## 🗺️ Roadmap
 
-- [ ] Drag & drop media import
-- [ ] Undo/redo improvements
+- [x] Drag & drop media import
+- [x] Undo/redo improvements
+- [x] PWA / Service Worker for offline support
 - [ ] More transition types
 - [ ] Audio waveform visualization
-- [ ] Keyboard shortcuts guide
-- [ ] PWA / Service Worker for offline support
+- [ ] Keyboard shortcuts guide (overlay) — shortcuts themselves already work (Space, Ctrl+Z/Y, Del, S, T, arrows, Home/End)
 - [ ] Performance optimizations for large projects
 
 ---

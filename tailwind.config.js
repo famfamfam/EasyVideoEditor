@@ -6,6 +6,10 @@ export default {
   ],
   theme: {
     extend: {
+      screens: {
+        // Small-phone breakpoint so `xs:` utilities (e.g. button labels) work.
+        xs: '480px',
+      },
       colors: {
         surface: {
           DEFAULT: '#111118',

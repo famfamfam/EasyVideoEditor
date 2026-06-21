@@ -46,6 +46,22 @@ export default function PreviewPanel() {
     }
   }, [textItems]);
 
+  // Ensure web fonts are loaded before drawing text — otherwise the canvas
+  // renders the first frame with a fallback font and the preview diverges
+  // from the exported result until something forces a re-render.
+  useEffect(() => {
+    if (!('fonts' in document) || textItems.length === 0) return;
+    const specs = new Set(
+      textItems.map((ti) => `${ti.fontWeight} ${ti.fontSize}px ${ti.fontFamily}`),
+    );
+    let cancelled = false;
+    Promise.all([...specs].map((s) => document.fonts.load(s).catch(() => {}))).then(() => {
+      if (cancelled || playing || !engineRef.current) return;
+      engineRef.current.seek(currentTime, clips, tracks, mediaMap.current, textItems);
+    });
+    return () => { cancelled = true; };
+  }, [textItems]);
+
   useEffect(() => {
     engineRef.current?.setTransitions(transitions);
     if (!playing && engineRef.current) {

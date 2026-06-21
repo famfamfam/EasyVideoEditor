@@ -26,6 +26,7 @@ export default function MediaPanel({ onImport, mobile }: MediaPanelProps) {
   const { isMobile } = useMobileLayout();
 
   const [filter, setFilter] = useState<'all' | 'video' | 'audio' | 'image'>('all');
+  const [dragOver, setDragOver] = useState(false);
 
   const handleImport = useCallback(() => {
     if (onImport) { onImport(); return; }
@@ -77,6 +78,30 @@ export default function MediaPanel({ onImport, mobile }: MediaPanelProps) {
     e.dataTransfer.effectAllowed = 'copy';
   }, []);
 
+  // ── Drag & drop files from the OS to import ──
+  const onPanelDragOver = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return; // ignore internal drags
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setDragOver(true);
+  }, []);
+
+  const onPanelDragLeave = useCallback((e: React.DragEvent) => {
+    // Ignore leaves that move into a child element
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDragOver(false);
+  }, []);
+
+  const onPanelDrop = useCallback(async (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    setDragOver(false);
+    const files = e.dataTransfer.files;
+    if (!files?.length) return;
+    const imported = await importFiles(files); // importFiles skips non-media files
+    if (imported.length) addMedia(imported);
+  }, [addMedia]);
+
   const iconForType = (type: MediaFile['type']) => {
     if (type === 'video') return <Film size={14} className="text-purple-400" />;
     if (type === 'audio') return <Music size={14} className="text-blue-400" />;
@@ -86,7 +111,20 @@ export default function MediaPanel({ onImport, mobile }: MediaPanelProps) {
   const filtered = filter === 'all' ? media : media.filter((m) => m.type === filter);
 
   return (
-    <aside className={mobile ? 'flex flex-col h-full bg-surface-50' : 'w-56 xl:w-64 flex-shrink-0 flex flex-col border-r border-white/5 bg-surface-50'}>
+    <aside
+      onDragOver={onPanelDragOver}
+      onDragLeave={onPanelDragLeave}
+      onDrop={onPanelDrop}
+      className={`${mobile ? 'flex flex-col h-full bg-surface-50' : 'w-56 xl:w-64 flex-shrink-0 flex flex-col border-r border-white/5 bg-surface-50'} relative${dragOver ? ' ring-2 ring-accent ring-inset' : ''}`}
+    >
+      {dragOver && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-accent/10 backdrop-blur-sm pointer-events-none">
+          <div className="flex flex-col items-center text-accent-light">
+            <FolderOpen size={32} className="mb-2" />
+            <p className="text-xs font-medium">{t('dropToImport')}</p>
+          </div>
+        </div>
+      )}
       <div className="px-3 py-2 flex items-center justify-between border-b border-white/5">
         <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{t('mediaLibrary')}</span>
         <button onClick={handleImport} className="p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors" title={t('importFiles')}>

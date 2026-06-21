@@ -317,9 +317,9 @@ function TextProperties({ text, updateTextItem, mobile }: { text: TextItem; upda
           <Row label={t('rowFontFamily')}>
             <select value={text.fontFamily} onChange={(e) => update({ fontFamily: e.target.value })}
               className="w-full bg-surface border border-white/10 rounded px-2 py-1 text-gray-200 focus:border-accent/60 outline-none">
-              <option value="sans-serif">Sans Serif (Noto Sans)</option>
-              <option value="serif">Serif (Noto Serif)</option>
-              <option value="monospace">Monospace (Noto Mono)</option>
+              <option value="'Noto Sans', sans-serif">Sans Serif (Noto Sans)</option>
+              <option value="'Noto Serif', serif">Serif (Noto Serif)</option>
+              <option value="'Noto Sans Mono', monospace">Monospace (Noto Mono)</option>
               <option value="'Arimo', sans-serif">Arial / Arimo</option>
               <option value="'Oswald', sans-serif">Impact / Oswald</option>
               <option value="'Tinos', serif">Times New Roman / Tinos</option>
@@ -330,7 +330,7 @@ function TextProperties({ text, updateTextItem, mobile }: { text: TextItem; upda
               <option value="'Oswald', sans-serif">Oswald</option>
               <option value="'Fira Sans', sans-serif">Fira Sans</option>
               <option value="'Cousine', monospace">Cousine (Courier)</option>
-              <option value="'Comic Neue', cursive">Comic Neue</option>
+              <option value="'Caveat', cursive">Caveat (рукописный)</option>
             </select>
           </Row>
           <Row label={`${t('rowFontSize')} ${text.fontSize}px`}>
@@ -341,9 +341,7 @@ function TextProperties({ text, updateTextItem, mobile }: { text: TextItem; upda
             <select value={text.fontWeight} onChange={(e) => update({ fontWeight: Number(e.target.value) })}
               className="w-full bg-surface border border-white/10 rounded px-2 py-1 text-gray-200 focus:border-accent/60 outline-none">
               <option value={400}>{t('fontWeightNormal')}</option>
-              <option value={600}>{t('fontWeightSemibold')}</option>
               <option value={700}>{t('fontWeightBold')}</option>
-              <option value={900}>{t('fontWeightBlack')}</option>
             </select>
           </Row>
           <Row label={t('rowTextAlign')}>
